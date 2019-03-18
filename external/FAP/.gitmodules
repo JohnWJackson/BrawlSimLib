@@ -1,0 +1,4 @@
+[submodule "external/BWAPI"]
+	path = external/BWAPI
+	url = https://github.com/BWAPI/BWAPI.git
+	branch = develop
