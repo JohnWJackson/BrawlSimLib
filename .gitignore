@@ -20,3 +20,4 @@ external/BWAPI/.vs/ExampleProjects/v15/.suo
 *.cs
 *.config
 *.manifest
+*.opendb

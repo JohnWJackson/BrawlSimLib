@@ -3,7 +3,7 @@
 #include "..\BrawlSim.hpp"
 
 
-namespace BrawlSim 
+namespace impl
 {
 
 class UnitData 

@@ -1,5 +1,7 @@
 #include "../../BrawlSimLib/include/BrawlSim.hpp"
 
+using namespace impl;
+
 namespace BrawlSim
 {
 
@@ -59,7 +61,7 @@ namespace BrawlSim
 		}
 
 		/// Updates the FAP Score of players units after sim
-		void updateFAPvalue(std::vector<FAP::FAPUnit<UnitData*>> &fap_vector, std::map<BWAPI::UnitType, int>& unit_map)
+		void updateFAPvalue(std::vector<FAP::FAPUnit<UnitData*>>& fap_vector, std::map<BWAPI::UnitType, int>& unit_map)
 		{
 			for (auto& fu : fap_vector)
 			{
@@ -74,13 +76,9 @@ namespace BrawlSim
 	}
 
 	///Simply returns the unittype that is the "best" of a BuildFAP sim.
-	BWAPI::UnitType returnOptimalUnit()
-	{
-		FAP::FastAPproximation<UnitData*> MCfap;
-		
-		PlayerData<true>	player;
-		PlayerData<false>	enemy;
-		
+	BWAPI::UnitType Brawl::returnOptimalUnit()
+	{	
+
 		MCfap.clear();
 
 		addToMCFAP(MCfap, player);
