@@ -78,8 +78,10 @@ namespace BrawlSim
 	///Simply returns the unittype that is the "best" of a BuildFAP sim.
 	BWAPI::UnitType Brawl::returnOptimalUnit()
 	{	
-
 		MCfap.clear();
+
+		player.update();
+		enemy.update();
 
 		addToMCFAP(MCfap, player);
 		addToMCFAP(MCfap, enemy);

@@ -13,17 +13,23 @@ public:
 	BWAPI::Player							player_;
 	BWAPI::Race								race_;
 
-	/* unit_map_ definition is different for friendly and enemy players
-	** @is_friendly: map<BWAPI::UnitType, int sim_scores>
-	** @!is_friendly: map<BWAPI::UnitType, int unit_count> */
+	/// unit_map_ definition is different for friendly and enemy players
+	/// @is_friendly: map<BWAPI::UnitType, int sim_scores>
+	/// @!is_friendly: map<BWAPI::UnitType, int unit_count>
 	std::map<BWAPI::UnitType, int>			unit_map_;
 
-	std::map<BWAPI::UpgradeType, int>		upgrades_map_; // map of UpgradeTypes and upgrade level
+	/// map of UpgradeTypes and upgrade level
+	std::map<BWAPI::UpgradeType, int>		upgrades_map_;
 
 	PlayerData() 
 	{
 		setPlayer();
 		setRace();
+	}
+
+	/// Update the players data
+	void update()
+	{
 		buildUnitMap();
 		buildUpgradesMap();
 	}
@@ -85,21 +91,21 @@ private:
 		switch (race_) 
 		{
 		case BWAPI::Races::Zerg: 
-			unit_map_ = { { BWAPI::UnitTypes::None,             0 }, { BWAPI::UnitTypes::Zerg_Ultralisk,  0 }, { BWAPI::UnitTypes::Zerg_Mutalisk,               0 },
-						  { BWAPI::UnitTypes::Zerg_Scourge,     0 }, { BWAPI::UnitTypes::Zerg_Hydralisk,  0 }, { BWAPI::UnitTypes::Zerg_Zergling,               0 },
-						  { BWAPI::UnitTypes::Zerg_Lurker,      0 }, { BWAPI::UnitTypes::Zerg_Guardian,   0 }, { BWAPI::UnitTypes::Zerg_Devourer,               0 } };
+			unit_map_ = { { BWAPI::UnitTypes::Zerg_Ultralisk, 0 }, { BWAPI::UnitTypes::Zerg_Mutalisk, 0 }, { BWAPI::UnitTypes::Zerg_Scourge, 0 },
+						  { BWAPI::UnitTypes::Zerg_Hydralisk, 0 }, { BWAPI::UnitTypes::Zerg_Zergling, 0 }, { BWAPI::UnitTypes::Zerg_Lurker, 0 },
+						  { BWAPI::UnitTypes::Zerg_Guardian,  0 }, { BWAPI::UnitTypes::Zerg_Devourer, 0 } };
 			break;
 		case BWAPI::Races::Terran:
-			unit_map_ = { { BWAPI::UnitTypes::None,             0 }, { BWAPI::UnitTypes::Terran_Marine,   0 }, { BWAPI::UnitTypes::Terran_Battlecruiser,        0 },
-						  { BWAPI::UnitTypes::Terran_Firebat,   0 }, { BWAPI::UnitTypes::Terran_Goliath,  0 }, { BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode, 0 },
-						  { BWAPI::UnitTypes::Terran_Medic,     0 }, { BWAPI::UnitTypes::Terran_Valkyrie, 0 }, { BWAPI::UnitTypes::Terran_Vulture,              0 }, 
-						  { BWAPI::UnitTypes::Terran_Wraith,    0 } };
+			unit_map_ = { { BWAPI::UnitTypes::Terran_Marine,  0 }, { BWAPI::UnitTypes::Terran_Vulture,  0 },
+						  { BWAPI::UnitTypes::Terran_Firebat, 0 }, { BWAPI::UnitTypes::Terran_Goliath,  0 }, { BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode, 0 },
+						  { BWAPI::UnitTypes::Terran_Medic,   0 }, { BWAPI::UnitTypes::Terran_Valkyrie, 0 }, { BWAPI::UnitTypes::Terran_Battlecruiser,        0 },
+						  { BWAPI::UnitTypes::Terran_Wraith,  0 } };
 			break;
 		case BWAPI::Races::Protoss:
-			unit_map_ = { { BWAPI::UnitTypes::None,             0 }, { BWAPI::UnitTypes::Protoss_Arbiter, 0 }, { BWAPI::UnitTypes::Protoss_Archon,              0 },
-						  { BWAPI::UnitTypes::Protoss_Carrier,  0 }, { BWAPI::UnitTypes::Protoss_Corsair, 0 }, { BWAPI::UnitTypes::Protoss_Dark_Templar,        0 },
-						  { BWAPI::UnitTypes::Protoss_Dragoon,  0 }, { BWAPI::UnitTypes::Protoss_Reaver,  0 }, { BWAPI::UnitTypes::Protoss_Scout,               0 },
-						  { BWAPI::UnitTypes::Protoss_Zealot,   0 } };
+			unit_map_ = { { BWAPI::UnitTypes::Protoss_Arbiter, 0 }, { BWAPI::UnitTypes::Protoss_Archon,  0 },
+						  { BWAPI::UnitTypes::Protoss_Carrier, 0 }, { BWAPI::UnitTypes::Protoss_Corsair, 0 }, { BWAPI::UnitTypes::Protoss_Dark_Templar, 0 },
+						  { BWAPI::UnitTypes::Protoss_Dragoon, 0 }, { BWAPI::UnitTypes::Protoss_Reaver,  0 }, { BWAPI::UnitTypes::Protoss_Scout,        0 },
+						  { BWAPI::UnitTypes::Protoss_Zealot,  0 } };
 			break;
 		// Should never happen
 		default:
