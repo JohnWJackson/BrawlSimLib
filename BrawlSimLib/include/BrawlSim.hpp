@@ -12,17 +12,21 @@
 
 namespace BrawlSim
 {
-	class Brawl
-	{
-	public:
-		//Simply returns the unittype that is the "best" of a BuildFAP sim.
-		BWAPI::UnitType returnOptimalUnit();
+	class UnitData;
+	class PlayerData;
 
-	private:
-		FAP::FastAPproximation<impl::UnitData*> MCfap;
+class Brawl
+{
+public:
+	/// Returns the BWAPI::UnitType that is the "best" of a
+	/// BuildFAP Monte Carlo simulation
+	BWAPI::UnitType returnOptimalUnit();
 
-		impl::PlayerData<true>	player;
-		impl::PlayerData<false>	enemy;
-	};
+private:
+	FAP::FastAPproximation<impl::UnitData*> MCfap;
+
+	impl::PlayerData<true>	player;
+	impl::PlayerData<false>	enemy;
+};
 
 }

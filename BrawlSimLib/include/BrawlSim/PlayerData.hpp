@@ -6,39 +6,59 @@
 namespace impl 
 {
 
+/// Forward Declarations
+class UnitData;
+class StoredUnit;
+
 template <bool is_friendly>
 class PlayerData
 {
 public:
-	BWAPI::Player							player_;
-	BWAPI::Race								race_;
+	BWAPI::Player									player_;
+	BWAPI::Race										race_;
 
-	/// unit_map_ definition is different for friendly and enemy players
-	/// @is_friendly: map<BWAPI::UnitType, int sim_scores>
-	/// @!is_friendly: map<BWAPI::UnitType, int unit_count>
-	std::map<BWAPI::UnitType, int>			unit_map_;
+	std::vector<BWAPI::UnitType>					sim_types_;
 
-	/// map of UpgradeTypes and upgrade level
-	std::map<BWAPI::UpgradeType, int>		upgrades_map_;
+	std::map<UnitData, int>							combat_units_;
+
+	std::map<BWAPI::Unit, StoredUnit>				unit_map_;
+
+	std::vector<StoredUnit>							units_;
+
+	std::map<BWAPI::UpgradeType, int>				upgrades_map_; // <upgradetype, upgrade_level>
 
 	PlayerData() 
 	{
 		setPlayer();
 		setRace();
+		setSimTypes();
 	}
 
-	/// Update the players data
+	/// Update the player's data
+	template <bool friendly = is_friendly, typename std::enable_if<friendly>::type* = nullptr>
 	void update()
 	{
-		buildUnitMap();
+		buildUpgradesMap();
+	}
+
+	/// Update the enemy's data
+	template <bool friendly = is_friendly, typename std::enable_if<!friendly>::type* = nullptr>
+	void update()
+	{
+		if (race_ == BWAPI::Races::Unknown)
+		{
+			if (player_->getRace() != BWAPI::Races::Unknown)
+			{
+				setRace();
+				setSimTypes();
+			}
+		}
+
+		updateEnemyUnits();
 		buildUpgradesMap();
 	}
 
 private:
-	/// Set of all possible upgrade types
-	const BWAPI::UpgradeType::set upgrade_set = BWAPI::UpgradeTypes::allUpgradeTypes();
-
-
 	/// Store the self player that we are working with
 	template <bool friendly = is_friendly, typename std::enable_if<friendly>::type* = nullptr>
 	void setPlayer()
@@ -62,6 +82,7 @@ private:
 	template <bool friendly = is_friendly, typename std::enable_if<friendly>::type* = nullptr>
 	void buildUpgradesMap() 
 	{
+		BWAPI::UpgradeType::set upgrade_set = BWAPI::UpgradeTypes::allUpgradeTypes();
 		for (const auto& upgrade : upgrade_set) 
 		{
 			int level = player_->getUpgradeLevel(upgrade);
@@ -72,6 +93,7 @@ private:
 	template <bool friendly = is_friendly, typename std::enable_if<!friendly>::type* = nullptr>
 	void buildUpgradesMap()
 	{
+		BWAPI::UpgradeType::set upgrade_set = BWAPI::UpgradeTypes::allUpgradeTypes();
 		for (const auto& upgrade : upgrade_set) 
 		{
 			int observed_level = player_->getUpgradeLevel(upgrade);
@@ -83,90 +105,117 @@ private:
 		}
 	}
 
-///------------------------------Friendly Player----------------------------------------------------
 	/// Builds a map of all valid potential simmable combat units of the friendly player's race
-	template <bool friendly = is_friendly, typename std::enable_if<friendly>::type* = nullptr>
-	void buildUnitMap() 
+	void setSimTypes() 
 	{
 		switch (race_) 
 		{
-		case BWAPI::Races::Zerg: 
-			unit_map_ = { { BWAPI::UnitTypes::Zerg_Ultralisk, 0 }, { BWAPI::UnitTypes::Zerg_Mutalisk, 0 }, { BWAPI::UnitTypes::Zerg_Scourge, 0 },
-						  { BWAPI::UnitTypes::Zerg_Hydralisk, 0 }, { BWAPI::UnitTypes::Zerg_Zergling, 0 }, { BWAPI::UnitTypes::Zerg_Lurker, 0 },
-						  { BWAPI::UnitTypes::Zerg_Guardian,  0 }, { BWAPI::UnitTypes::Zerg_Devourer, 0 } };
+		case BWAPI::Races::Zerg:
+			sim_types_ = { BWAPI::UnitTypes::Zerg_Ultralisk, BWAPI::UnitTypes::Zerg_Mutalisk,
+					  BWAPI::UnitTypes::Zerg_Scourge,   BWAPI::UnitTypes::Zerg_Hydralisk, 
+				      BWAPI::UnitTypes::Zerg_Zergling,  BWAPI::UnitTypes::Zerg_Lurker,
+					  BWAPI::UnitTypes::Zerg_Guardian,  BWAPI::UnitTypes::Zerg_Devourer };
 			break;
 		case BWAPI::Races::Terran:
-			unit_map_ = { { BWAPI::UnitTypes::Terran_Marine,  0 }, { BWAPI::UnitTypes::Terran_Vulture,  0 },
-						  { BWAPI::UnitTypes::Terran_Firebat, 0 }, { BWAPI::UnitTypes::Terran_Goliath,  0 }, { BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode, 0 },
-						  { BWAPI::UnitTypes::Terran_Medic,   0 }, { BWAPI::UnitTypes::Terran_Valkyrie, 0 }, { BWAPI::UnitTypes::Terran_Battlecruiser,        0 },
-						  { BWAPI::UnitTypes::Terran_Wraith,  0 } };
+			sim_types_ = { BWAPI::UnitTypes::Terran_Marine,  BWAPI::UnitTypes::Terran_Vulture,
+					  BWAPI::UnitTypes::Terran_Wraith,  BWAPI::UnitTypes::Terran_Firebat,
+					  BWAPI::UnitTypes::Terran_Goliath, BWAPI::UnitTypes::Terran_Siege_Tank_Tank_Mode,
+					  BWAPI::UnitTypes::Terran_Medic,   BWAPI::UnitTypes::Terran_Battlecruiser,
+				      BWAPI::UnitTypes::Terran_Valkyrie };
 			break;
 		case BWAPI::Races::Protoss:
-			unit_map_ = { { BWAPI::UnitTypes::Protoss_Arbiter, 0 }, { BWAPI::UnitTypes::Protoss_Archon,  0 },
-						  { BWAPI::UnitTypes::Protoss_Carrier, 0 }, { BWAPI::UnitTypes::Protoss_Corsair, 0 }, { BWAPI::UnitTypes::Protoss_Dark_Templar, 0 },
-						  { BWAPI::UnitTypes::Protoss_Dragoon, 0 }, { BWAPI::UnitTypes::Protoss_Reaver,  0 }, { BWAPI::UnitTypes::Protoss_Scout,        0 },
-						  { BWAPI::UnitTypes::Protoss_Zealot,  0 } };
+			sim_types_ = { BWAPI::UnitTypes::Protoss_Arbiter, BWAPI::UnitTypes::Protoss_Archon,
+					  BWAPI::UnitTypes::Protoss_Zealot,  BWAPI::UnitTypes::Protoss_Carrier, 
+					  BWAPI::UnitTypes::Protoss_Corsair, BWAPI::UnitTypes::Protoss_Dark_Templar,
+					  BWAPI::UnitTypes::Protoss_Dragoon, BWAPI::UnitTypes::Protoss_Reaver, 
+				      BWAPI::UnitTypes::Protoss_Scout };
+			break;
+		// Random race, will only happen for enemy before beeing seen
+		case BWAPI::Races::Unknown:
 			break;
 		// Should never happen
 		default:
-			BWAPI::Broodwar->sendText("ERROR: BrawlSim unable to detect players race");
+			BWAPI::Broodwar->sendText("ERROR: BrawlSim unable to detect player's race");
 		}
+	}
 
-		// Remove units from the map that we dont have the tech or supply to build and set the initial Unit Score
-		for (auto it = unit_map_.begin(); it != unit_map_.end(); ) 
+	void buildUnitData()
+	{
+		for (const auto& ut : sim_types_)
 		{
-			if (it->first == BWAPI::UnitTypes::None)
-				++it;
+			combat_units_[UnitData(ut)]++;
+		}
+	}
 
-			else if (!UnitUtil::isValidUnit<true>(it->first))
-				it = unit_map_.erase(it);
+	///// Builds a map of all valid potential simmable combat units of the enemy player's race
+	//template <bool friendly = is_friendly, typename std::enable_if<!friendly>::type* = nullptr>
+	//void setSimUnits() 
+	//{
+	//	std::vector<BWAPI::UnitType> units;
 
-			else 
+	//	// Be ready for early game units before enemy has been spotted
+	//	switch (race_)
+	//	{
+	//	case BWAPI::Races::Zerg:
+	//		units = { BWAPI::UnitTypes::Zerg_Zergling };
+	//		break;
+	//	case BWAPI::Races::Terran:
+	//		units = { BWAPI::UnitTypes::Terran_Marine };
+	//		break;
+	//	case BWAPI::Races::Protoss:
+	//		units = { BWAPI::UnitTypes::Protoss_Zealot };
+	//		break;
+	//	// if enemy race is random (Unknown)
+	//	case BWAPI::Races::Unknown:
+	//		units = { BWAPI::UnitTypes::Zerg_Zergling, 
+	//			      BWAPI::UnitTypes::Terran_Marine, 
+	//			      BWAPI::UnitTypes::Protoss_Zealot };
+	//		return;
+	//	// Should never happen
+	//	default:
+	//		BWAPI::Broodwar->sendText("ERROR: BrawlSim unable to detect enemy's race");
+	//	}
+
+	//	for (const auto& ut : units)
+	//	{
+	//		combat_units_.push_back(UnitData(ut));
+	//	}
+	//}
+
+	/// Add seen enemy units to the combat sim
+	void updateEnemyUnits()
+	{
+		BWAPI::Unitset allUnits = BWAPI::Broodwar->enemy()->getUnits();
+		for (const auto& unit : allUnits)
+		{
+			if (isSimmableUnit(unit))
 			{
-				// Set score
-				it->second = UnitUtil::initialUnitScore(it->first);
-				++it;
+				combat_units_[UnitData(unit)]++;
+			
+
+				auto it = std::find(units_.begin(), units_.end(), unit);
+				if (it != units_.end())
+				{
+					std::iter_swap(it, units_.end() - 1); // move the unit to end of vector and erase
+					units_.erase(units_.end() - 1);		 
+				}
+
 			}
 		}
 	}
 
-///------------------------------Enemy Player----------------------------------------------------
-	/// Builds a map of all valid potential simmable combat units of the enemy player's race
-	template <bool friendly = is_friendly, typename std::enable_if<!friendly>::type* = nullptr>
-	void buildUnitMap() 
+	/// If the unit is a simmable combat unittype
+	bool isSimmableUnit(const BWAPI::Unit& u)
 	{
-		// Be ready for early game units before enemy has been spotted
-		switch (race_)
+		BWAPI::UnitType ut = u->getType();
+		for (const auto& type : sim_types_)
 		{
-		case BWAPI::Races::Zerg:
-			unit_map_ = { { BWAPI::UnitTypes::Zerg_Zergling,  0 } };
-			break;
-		case BWAPI::Races::Terran:
-			unit_map_ = { { BWAPI::UnitTypes::Terran_Marine,  0 } };
-			break;
-		case BWAPI::Races::Protoss:
-			unit_map_ = { { BWAPI::UnitTypes::Protoss_Zealot, 0 } };
-			break;
-		// if enemy race is random it returns as unknown if not yet sighted
-		case BWAPI::Races::Unknown:
-			unit_map_ = { { BWAPI::UnitTypes::Protoss_Zealot, 0 }, { BWAPI::UnitTypes::Terran_Marine, 0 }, { BWAPI::UnitTypes::Zerg_Zergling,  0 } };
-			return;
-		}
-
-		// Add seen enemy units to unit_map_ and set initial Unit Score
-		if (player_->allUnitCount() > 0) 
-		{
-			BWAPI::Unitset units = player_->getUnits();
-			for (const auto& u : units)
+			if (ut == type)
 			{
-				BWAPI::UnitType ut = u->getType();
-				
-				if (UnitUtil::isValidUnit<false>(ut))
-				{					
-					unit_map_[ut]++; //add to map if not added and increment the count
-				}
+				return true;
 			}
 		}
+		return false;
 	}
 
 };
