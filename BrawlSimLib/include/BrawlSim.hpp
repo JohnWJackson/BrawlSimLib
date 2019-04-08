@@ -19,7 +19,7 @@ namespace BrawlSim
 	** @param  BWAPI::Unitset enemy_units - BWAPI's custom set for units. Enemy units that the friendly UnitType will fight against.
 	** @param  int sim_size - Approximate number of units for each force's army composition in the sim. Default 10.
 	**
-	** @return BWAPI::UnitType - "best" UnitType out of the FAP Sim.
+	** @return BWAPI::UnitType - "best" UnitType out of the FAP Sim. Returns BWAPI::UnitType::None if nothing buildable or empty friendly_types
 	*/
 	BWAPI::UnitType returnOptimalUnit(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, int sim_size = 10);
 
@@ -31,6 +31,7 @@ namespace BrawlSim
 	void drawOptimalUnit(const int x, const int y);
 
 
-	// The stored optimal unit
+
+	// The stored previous optimal unit. For drawOptimalUnit.
 	static BWAPI::UnitType optimal_unit = BWAPI::UnitTypes::None;
 }

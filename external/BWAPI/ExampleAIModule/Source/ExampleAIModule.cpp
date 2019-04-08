@@ -65,19 +65,19 @@ void ExampleAIModule::onFrame()
 	auto friendly_units = BWAPI::UnitTypes::allUnitTypes();
 	for (auto it = friendly_units.begin(); it != friendly_units.end(); )
 	{
-		if (BWAPI::Broodwar->self()->isUnitAvailable(*it) && it->canAttack() && it->canMove() && !it->isHero())
-		{
+		//if (BWAPI::Broodwar->self()->isUnitAvailable(*it) /*&& BWAPI::Broodwar->canMake(*it)*/)
+		//{
 			++it;
-		}
-		else
-		{
-			it = friendly_units.erase(it);
-		}
+		//}
+		//else
+		//{
+		//	it = friendly_units.erase(it);
+		//}
 	}
 
 	BWAPI::Unitset enemy_units = BWAPI::Broodwar->enemy()->getUnits();
 	BWAPI::UnitType ut = BrawlSim::returnOptimalUnit(friendly_units, enemy_units, 10);
-	
+
 	BrawlSim::drawOptimalUnit(200, 40);
 	//BWAPI::Broodwar->sendText(ut.c_str());
 

@@ -6,13 +6,14 @@ namespace BrawlSim
 
 	namespace
 	{
+		// @TODO: Check to make sure all unsimmable unittypes are removed and that all simmable are included (abilities simmable?)
 		/// Checks if a UnitType is a suitable type for the sim
 		bool isValidType(const BWAPI::UnitType& type)
 		{
-			// No workers, buildings, heroes, or unbuildable unittypes
+			// No workers, buildings, heroes, 0 supply types, or unbuildable unittypes
 			if (type.isWorker() ||
-				type.isBuilding() ||
 				type.isHero() ||
+				type.supplyRequired() == 0 ||
 				type == BWAPI::UnitTypes::Protoss_Interceptor ||
 				type == BWAPI::UnitTypes::Protoss_Scarab ||
 				type == BWAPI::UnitTypes::Zerg_Infested_Terran)
@@ -22,15 +23,10 @@ namespace BrawlSim
 
 			return
 				type.canAttack() ||
-				type.isDetector() ||
-				type == BWAPI::UnitTypes::Zerg_Queen ||
-				type == BWAPI::UnitTypes::Zerg_Defiler ||
-				type == BWAPI::UnitTypes::Terran_Medic ||
-				type == BWAPI::UnitTypes::Protoss_High_Templar ||
-				type == BWAPI::UnitTypes::Protoss_Dark_Archon;
+				type == BWAPI::UnitTypes::Terran_Medic;
 		}
 
-		/// Converts valid friendly UnitTypes to FAP::Units and add to the sim
+		/// Add friendly units to the FAP sim.
 		void addFriendlyToFAP(FAP::FastAPproximation<impl::UnitData*>& fap_object, std::vector<impl::UnitData>& friendly_ud, const int sim_size)
 		{
 			for (auto& u : friendly_ud)
@@ -42,8 +38,7 @@ namespace BrawlSim
 						fap_object.addUnitPlayer1(u.convertToFAPUnit());
 					}
 				}
-
-				else if (isValidType(u.type))
+				else
 				{
 					for (int i = 0; i < sim_size; ++i)
 					{
@@ -157,11 +152,14 @@ namespace BrawlSim
 		// Convert each UnitType to UnitData and get initial score
 		for (const auto& ut : friendly_types)
 		{
-			impl::UnitData ud{ ut, BWAPI::Broodwar->self() };
+			if (isValidType(ut))
+			{
+				impl::UnitData ud{ ut, BWAPI::Broodwar->self() };
 
-			friendly_ud.push_back(ud);
+				friendly_ud.push_back(ud);
 
-			scores[ut] = ud.pre_sim_score;
+				scores[ut] = ud.pre_sim_score;
+			}
 		}
 
 		// Return best initial score
