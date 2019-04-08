@@ -42,13 +42,14 @@ namespace BrawlSim
 	/// <param>
 	void drawOptimalUnit(const int x, const int y);
 	
-	/// @Overload
+	/// @TODO Fix this to display each optimal unit being built simultaneously
+	/*/// @Overload
 	/// <summary>Draw the 'would-be' optimal unit of a particular building on top of the building. Best for Terran/Protoss</summary>
 	///
 	/// <param name = "building">
 	///		The building to be drawn over
 	/// </param>
-	void drawOptimalUnit(const BWAPI::Unit& building);
+	void drawOptimalUnit(const BWAPI::Unit& building);*/
 
 
 
