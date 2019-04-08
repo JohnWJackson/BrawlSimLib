@@ -98,7 +98,7 @@ namespace BrawlSim
 			for (auto& fu : fap_vector)
 			{
 				double proportion_health = (fu.health + fu.shields) / static_cast<double>(fu.maxHealth + fu.maxShields);
-				scores[fu.unitType] = static_cast<int>(fu.data->pre_sim_score * proportion_health);
+				scores[fu.unitType] = static_cast<int>(fu.data->score * proportion_health);
 			}
 		}
 
@@ -154,7 +154,7 @@ namespace BrawlSim
 
 				friendly_ud.push_back(ud);
 
-				scores[ut] = ud.pre_sim_score;
+				scores[ut] = ud.score;
 			}
 		}
 

@@ -11,7 +11,7 @@ namespace impl
 		BWAPI::UnitType			type;
 		BWAPI::Player			player;
 
-		int						pre_sim_score;
+		int				score;
 
 		
 		UnitData(const BWAPI::UnitType& u, const BWAPI::Player& p);
@@ -98,12 +98,6 @@ namespace impl
 				.setAttackCooldownRemaining(NULL)
 				.setRangeUpgrade(NULL)
 				;
-		}
-
-		/// Return a initial score for a unittype based on economic value
-		inline int initialUnitScore(const BWAPI::UnitType& ut) const
-		{
-			return static_cast<int>(ut.mineralPrice() + (1.25 * ut.gasPrice()) + (25 * (ut.supplyRequired() / 2)));
 		}
 
 	private:

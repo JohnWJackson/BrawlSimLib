@@ -5,8 +5,8 @@ namespace impl {
 	UnitData::UnitData(const BWAPI::UnitType& u, const BWAPI::Player& p)
 		: type(u)
 		, player(p)
-		, pre_sim_score(p == BWAPI::Broodwar->self() ? initialUnitScore(type) : NULL) //only need scores for self units
 	{
+		score = 1;
 	}
 
 	/// Generate a random position for the unit based on the unit speed
