@@ -5,69 +5,28 @@
 namespace impl
 {
 
-class UnitData 
-{
-public:
-	int						id;
-	BWAPI::Player			player;
-	BWAPI::UnitType			type;
-	BWAPI::Unit				unit;
-
-	int						pre_sim_score;
-	int						post_sim_score;
-
-	UnitData(const BWAPI::Player& player, const BWAPI::UnitType& ut);
-	UnitData(const BWAPI::Unit& u);
-	~UnitData();
-
-	bool operator< (const UnitData& lhs) const
+	class UnitData
 	{
-		return id < lhs.id;
-	}
+	public:
+		BWAPI::UnitType			type;
+		BWAPI::Player			player;
 
-private:
+		int						pre_sim_score;
 
-	/// Return a initial score for a unittype based on economic value
-	int initialUnitScore(const BWAPI::UnitType& ut);
 
-};
+		UnitData(const BWAPI::UnitType& u, const BWAPI::Player& p)
+			: type(u)
+			, player(p)
+			, pre_sim_score(initialUnitScore(type))
+		{
+		}
 
-//typedef std::map<BWAPI::Unit, StoredUnit> SUMap;
-//
-//class StoredUnit
-//{
-//	SUMap unit_map;
-//
-//public:
-//	StoredUnit(const BWAPI::Unit& u)
-//		: id(u->getID())
-//	{
-//		unit_map[u] = *this;
-//	}
-//
-//	bool operator==(const BWAPI::Unit& u)
-//	{
-//		if (id == u->getID())
-//		{
-//			return true;
-//		}
-//		else
-//		{
-//			return false;
-//		}
-//	}
-//
-//	void removeUnit(BWAPI::Unit& unit)
-//	{
-//		unit_map.erase(unit);
-//	}
-//
-//};
-
-namespace UnitUtil 
-{
-	/// If the self player has the tech/buildings to build the requested unittype
-	bool buildableUnit(const BWAPI::UnitType& ut);
-}
+	private:
+		/// Return a initial score for a unittype based on economic value
+		inline int initialUnitScore(const BWAPI::UnitType& ut) const
+		{
+			return static_cast<int>(ut.mineralPrice() + (1.25 * ut.gasPrice()) + (25 * (ut.supplyRequired() / 2)));
+		}
+	};
 
 }
