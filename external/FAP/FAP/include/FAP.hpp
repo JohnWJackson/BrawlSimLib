@@ -127,7 +127,7 @@ namespace FAP {
     static_assert(Unit<uv>::hasFlag(UnitValues::stimmed));
     static_assert(Unit<uv>::hasFlag(UnitValues::rangeUpgrade));
     static_assert(Unit<uv>::hasFlag(UnitValues::attackerCount));
-    static_assert(Unit<uv>::hasFlag(UnitValues::data));
+    //static_assert(Unit<uv>::hasFlag(UnitValues::data));
     return true;
   }
 

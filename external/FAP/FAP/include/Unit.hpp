@@ -410,7 +410,7 @@ namespace FAP {
     template<UnitValues bitToSet>
     auto addFlag() && {
       auto constexpr newTag = static_cast<UnitValues>(static_cast<TagRepr>(values) | static_cast<TagRepr>(bitToSet));
-      static_assert(static_cast<TagRepr>(newTag) != static_cast<TagRepr>(values), "Value already set!");
+      //static_assert(static_cast<TagRepr>(newTag) != static_cast<TagRepr>(values), "Value already set!");
       return Unit<newTag, UnitExtension>{std::move(unit)};
     }
 
