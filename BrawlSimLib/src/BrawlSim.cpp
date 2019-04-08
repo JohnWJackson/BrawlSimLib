@@ -1,124 +1,194 @@
-#include "../../BrawlSimLib/include/BrawlSim.hpp"
+#include "..\..\BrawlSimLib\include\BrawlSim.hpp"
+
 
 namespace BrawlSim
 {
 
 	namespace
 	{
-
-		/// Convert a BWAPI::UnitType to a FAP_Unit and add to the simulation
-		template <bool friendly>
-		void addToMCFAP(FAP::FastAPproximation<UnitData*>& fap_object, PlayerData<friendly>& player)
+		/// Checks if a UnitType is a suitable type for the sim
+		bool isValidType(const BWAPI::UnitType& type)
 		{
-			for (const auto& u : player.unit_map_)
+			// No workers, buildings, heroes, or unbuildable unittypes
+			if (type.isWorker() ||
+				type.isBuilding() ||
+				type.isHero() ||
+				type == BWAPI::UnitTypes::Protoss_Interceptor ||
+				type == BWAPI::UnitTypes::Protoss_Scarab ||
+				type == BWAPI::UnitTypes::Zerg_Infested_Terran)
 			{
-				UnitData unit_data(u.first, player);
+				return false;
+			}
 
-				auto fap_unit = unit_data.convertToFAPUnit(player);
-			
-				if (friendly)
+			return
+				type.canAttack() ||
+				type.isDetector() ||
+				type == BWAPI::UnitTypes::Zerg_Queen ||
+				type == BWAPI::UnitTypes::Zerg_Defiler ||
+				type == BWAPI::UnitTypes::Terran_Medic ||
+				type == BWAPI::UnitTypes::Protoss_High_Templar ||
+				type == BWAPI::UnitTypes::Protoss_Dark_Archon;
+		}
+
+		/// Converts valid friendly UnitTypes to FAP::Units and add to the sim
+		void addFriendlyToFAP(FAP::FastAPproximation<impl::UnitData*>& fap_object, std::vector<impl::UnitData>& friendly_ud, const int sim_size)
+		{
+			for (auto& u : friendly_ud)
+			{
+				if (u.type.isTwoUnitsInOneEgg()) //zerglings and scourges
 				{
-					fap_object.addIfCombatUnitPlayer1(std::move(fap_unit)); //std::move rvalue cast
+					for (int i = 0; i < sim_size * 2; ++i) // add double the units
+					{
+						fap_object.addUnitPlayer1(u.convertToFAPUnit());
+					}
 				}
 
-				else
+				else if (isValidType(u.type))
 				{
-					// Add a fap unit for however many units the enemy has of that unittype
-					for (int i = 0; i < u.second; ++i)
+					for (int i = 0; i < sim_size; ++i)
 					{
-						fap_object.addIfCombatUnitPlayer2(std::move(fap_unit)); //std::move rvalue cast
+						fap_object.addUnitPlayer1(u.convertToFAPUnit());
 					}
 				}
 			}
 		}
 
-		/// Get the Total FAP Score of units for the player
-		template <bool friendly>
-		int getTotalFAPScore(FAP::FastAPproximation<UnitData*>& fap) 
+		/// Scale enemy unit composition to the sim_size and add valid UnitTypes to the sim
+		void addEnemyToFAP(FAP::FastAPproximation<impl::UnitData*>& fap_object, const BWAPI::Unitset& units, int& sim_size)
 		{
-			auto lambda = [&](int currentScore, auto FAPunit)
-			{
-				return static_cast<int>(currentScore + FAPunit.data->pre_sim_score_);
-			};
+			BWAPI::Player enemy = BWAPI::Broodwar->enemy();
 
-			if (friendly && fap.getState().first && !fap.getState().first->empty())
+			int unit_total = 0;
+			std::map<BWAPI::UnitType, int> count;
+			for (auto u : units) //count unittypes
 			{
-				return std::accumulate(fap.getState().first->begin(), 
-									   fap.getState().first->end(), 
-					                   0, 
-					                   lambda);
+				BWAPI::UnitType ut = u->getType();
+				if (isValidType(ut))
+				{
+					count[ut]++;
+					++unit_total;
+				}
 			}
-			else if (!friendly && fap.getState().second && !fap.getState().second->empty())
+
+			if (count.size() == sim_size) // already scaled
 			{
-				return std::accumulate(fap.getState().second->begin(),
-									   fap.getState().second->end(),
-									   0,
-									   lambda);
+				for (const auto& ut : count)
+				{
+					impl::UnitData ud{ ut.first, enemy };
+					fap_object.addUnitPlayer2(ud.convertToFAPUnit());
+				}
 			}
-			else return 0;
+			else  //scale the army composition before adding
+			{
+				int actual_sim_size = 0; //Original sim_size not guaranteed
+				for (const auto& ut : count) 
+				{
+					double percent = ut.second / unit_total;
+					int scaled_count = static_cast<int>(std::round(percent * sim_size));
+					actual_sim_size += scaled_count;
+
+					impl::UnitData ud{ ut.first, enemy };
+					for (int i = 0; i < scaled_count; ++i)
+					{
+						fap_object.addUnitPlayer2(ud.convertToFAPUnit());
+					}
+				}
+				sim_size = actual_sim_size; //set the sim size to match the enemy's size
+			}
 		}
 
-		/// Updates the FAP Score of players units after sim
-		void updateFAPvalue(std::vector<FAP::FAPUnit<UnitData*>> &fap_vector, std::map<BWAPI::UnitType, int>& unit_map)
+		/// Updates the score map to post FAP sim values
+		void updateScores(std::vector<FAP::FAPUnit<impl::UnitData*>>& fap_vector, std::map<BWAPI::UnitType, int>& scores)
 		{
 			for (auto& fu : fap_vector)
 			{
-				if (fu.data)
-				{
-					double proportion_health = (fu.health + fu.shields) / static_cast<double>(fu.maxHealth + fu.maxShields);
-					fu.data->post_sim_score_ = static_cast<int>(fu.data->pre_sim_score_ * proportion_health);
-					unit_map[fu.unitType] = fu.data->post_sim_score_;
-				}
+				double proportion_health = (fu.health + fu.shields) / static_cast<double>(fu.maxHealth + fu.maxShields);
+				scores[fu.unitType] = static_cast<int>(fu.data->pre_sim_score * proportion_health);
 			}
 		}
+
+		/// Return the UnitType with the highest score. If scores are tied, chooses more "flexible" UnitType.
+		BWAPI::UnitType getBestScoredType(const std::map<BWAPI::UnitType, int>& scores)
+		{
+			int best_sim_score = INT_MIN;
+			BWAPI::UnitType build_type = BWAPI::UnitTypes::None;
+
+			for (const auto& u : scores)
+			{
+				// there are several cases where the test return ties, ex: cannot see enemy units and they appear "empty", extremely one-sided combat...
+				if (u.second > best_sim_score)
+				{
+					best_sim_score = u.second;
+					build_type = u.first;
+				}
+				// there are several cases where the test return ties, ex: cannot see enemy units and they appear "empty", extremely one-sided combat...
+				else if (u.second == best_sim_score)
+				{
+					// if the current unit is "flexible" with regard to air and ground units, then keep it and continue to consider the next unit.
+					if (build_type.airWeapon() != BWAPI::WeaponTypes::None && build_type.groundWeapon() != BWAPI::WeaponTypes::None)
+					{
+						continue;
+					}
+					// if the tying unit is "flexible", then let's use that one.
+					else if (u.first.airWeapon() != BWAPI::WeaponTypes::None && u.first.groundWeapon() != BWAPI::WeaponTypes::None)
+					{
+						build_type = u.first;
+					}
+				}
+			}
+
+			return build_type;
+		}
+
 	}
 
-	///Simply returns the unittype that is the "best" of a BuildFAP sim.
-	BWAPI::UnitType returnOptimalUnit()
-	{
-		FAP::FastAPproximation<UnitData*> MCfap;
-		
-		PlayerData<true>	player;
-		PlayerData<false>	enemy;
-		
-		MCfap.clear();
+	/// Returns the unittype that is the "best" of a BuildFAP sim.
+	BWAPI::UnitType returnOptimalUnit(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, int sim_size)
+	{	
+		// Returns BWAPI::UnitType::None
+		if (friendly_types.empty())
+		{
+			return optimal_unit;
+		}
 
-		addToMCFAP(MCfap, player);
-		addToMCFAP(MCfap, enemy);
+		std::map<BWAPI::UnitType, int> scores;
+		std::vector<impl::UnitData> friendly_ud;
+
+		// Convert each UnitType to UnitData and get initial score
+		for (const auto& ut : friendly_types)
+		{
+			impl::UnitData ud{ ut, BWAPI::Broodwar->self() };
+
+			friendly_ud.push_back(ud);
+
+			scores[ut] = ud.pre_sim_score;
+		}
+
+		// Return best initial score
+		if (enemy_units.empty())
+		{
+			optimal_unit = getBestScoredType(scores);
+			return optimal_unit;
+		}
+
+		FAP::FastAPproximation<impl::UnitData*> MCfap;
+
+		addEnemyToFAP(MCfap, enemy_units, sim_size); // Add Enemy first - changes the sim_size
+		addFriendlyToFAP(MCfap, friendly_ud, sim_size);
 
 		MCfap.simulate(); //default 96 frames
-		
-		int friendly_fap_score = getTotalFAPScore<true>(MCfap);
-		int enemy_fap_score = getTotalFAPScore<false>(MCfap);
 
-		updateFAPvalue(*MCfap.getState().first, player.unit_map_);
+		updateScores(*MCfap.getState().first, scores);
 
-		int best_sim_score = INT_MIN;
-		BWAPI::UnitType build_type = BWAPI::UnitTypes::None;
-		for (auto& potential_type : player.unit_map_) 
-		{
-			// there are several cases where the test return ties, ex: cannot see enemy units and they appear "empty", extremely one-sided combat...
-			if (potential_type.second > best_sim_score)
-			{
-				best_sim_score = potential_type.second;
-				build_type = potential_type.first;
-			}
-			// there are several cases where the test return ties, ex: cannot see enemy units and they appear "empty", extremely one-sided combat...
-			else if (potential_type.second == best_sim_score)
-			{
-				// if the current unit is "flexible" with regard to air and ground units, then keep it and continue to consider the next unit.
-				if (build_type.airWeapon() != BWAPI::WeaponTypes::None && build_type.groundWeapon() != BWAPI::WeaponTypes::None)
-				{
-					continue;
-				}
-				// if the tying unit is "flexible", then let's use that one.
-				else if (potential_type.first.airWeapon() != BWAPI::WeaponTypes::None && potential_type.first.groundWeapon() != BWAPI::WeaponTypes::None)
-				{
-					build_type = potential_type.first;
-				}
-			}
-		}
-		return build_type;
+		optimal_unit = getBestScoredType(scores);
+
+		return optimal_unit;
+	}
+
+	/// Draw the optimal unit to the desired coordinates
+	void drawOptimalUnit(const int x, const int y)
+	{
+		BWAPI::Broodwar->drawTextScreen(x, y, "Brawl Unit: %s", optimal_unit.c_str());
 	}
 
 }

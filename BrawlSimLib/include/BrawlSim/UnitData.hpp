@@ -2,161 +2,113 @@
 
 #include "..\BrawlSim.hpp"
 
-
-namespace BrawlSim 
+namespace impl
 {
 
-class UnitData 
-{
-public:
-	int						pre_sim_score_;
-	int						post_sim_score_;
-
-
-	template <bool friendly>
-	UnitData(const BWAPI::UnitType& ut, PlayerData<friendly>& player)
-		:
-		type_(ut),
-		speed_tech_(false),
-		units_inside_object_(0),
-		is_flying_(ut.isFlyer()),
-		shields_(ut.maxShields()),
-		health_(ut.maxHitPoints())
+	class UnitData
 	{
-		positionMCFAP(player);
-		setProperSpeed(player);
+	public:
+		BWAPI::UnitType			type;
+		BWAPI::Player			player;
 
-		pre_sim_score_ = UnitUtil::initialUnitScore(type_);
-	}
+		int						pre_sim_score;
 
-	/// Convert a BWAPI::UnitType to a FAP Unit
-	template <bool friendly>
-	auto convertToFAPUnit(PlayerData<friendly>& player)
-	{
-		int armor_upgrades = player.upgrades_map_.at(type_.armorUpgrade()) + 2 * (type_ == BWAPI::UnitTypes::Zerg_Ultralisk * player.upgrades_map_.at(BWAPI::UpgradeTypes::Chitinous_Plating));
-
-		int gun_upgrades = std::max(player.upgrades_map_.at(type_.groundWeapon().upgradeType()),
-			                        player.upgrades_map_.at(type_.airWeapon().upgradeType()));
-
-		int shield_upgrades = static_cast<int>(shields_ > 0) * (player.upgrades_map_.at(BWAPI::UpgradeTypes::Protoss_Plasma_Shields));
-
-		bool range_upgrade =
-			(type_ == BWAPI::UnitTypes::Zerg_Hydralisk   && player.upgrades_map_[BWAPI::UpgradeTypes::Grooved_Spines] > 0) ||
-			(type_ == BWAPI::UnitTypes::Protoss_Dragoon  && player.upgrades_map_[BWAPI::UpgradeTypes::Singularity_Charge] > 0) ||
-			(type_ == BWAPI::UnitTypes::Terran_Marine    && player.upgrades_map_[BWAPI::UpgradeTypes::U_238_Shells] > 0) ||
-			(type_ == BWAPI::UnitTypes::Terran_Goliath   && player.upgrades_map_[BWAPI::UpgradeTypes::Charon_Boosters] > 0);
-
-		bool attack_speed_upgrade =
-			(type_ == BWAPI::UnitTypes::Zerg_Zergling    && player.upgrades_map_[BWAPI::UpgradeTypes::Adrenal_Glands] > 0);
-
-		if (type_ == BWAPI::UnitTypes::Protoss_Carrier   && player.upgrades_map_[BWAPI::UpgradeTypes::Carrier_Capacity] > 0) 
-		{
-			units_inside_object_ = 3 * (2 + 4 * player.upgrades_map_.at(BWAPI::UpgradeTypes::Carrier_Capacity));
-		}
-
-		return FAP::makeUnit<UnitData*>()
-			.setData(this)
-			.setUnitType(type_)
-			.setPosition(pos_)
-			.setHealth(health_)
-			.setShields(shields_)
-			.setFlying(is_flying_)
-			.setElevation(0)
-			.setAttackerCount(units_inside_object_)
-			.setArmorUpgrades(armor_upgrades)
-			.setAttackUpgrades(gun_upgrades)
-			.setShieldUpgrades(shield_upgrades)
-			.setSpeedUpgrade(speed_tech_)
-			.setAttackSpeedUpgrade(attack_speed_upgrade)
-			.setAttackCooldownRemaining(0)
-			.setStimmed(0)
-			.setRangeUpgrade(range_upgrade)
-			;
-	}
-
-private:
-	BWAPI::UnitType			 type_;
-	BWAPI::Position			 pos_;
-
-	double					 speed_;
-
-	int						 health_;
-	int						 shields_;
-	int						 units_inside_object_;  // For carrier interceptors, always 0 unless type_ is a carrier
-
-	bool					 is_flying_;
-	bool					 speed_tech_;           //if we have speed tech for this unit
-
-
-	/// Get top speed of a unit type including upgrades
-	template <bool friendly>
-	void setProperSpeed(PlayerData<friendly>& player)
-	{
-		bool speed_tech_ =
-			(type_ == BWAPI::UnitTypes::Zerg_Zergling    && player.upgrades_map_[BWAPI::UpgradeTypes::Metabolic_Boost] > 0) ||
-			(type_ == BWAPI::UnitTypes::Zerg_Hydralisk   && player.upgrades_map_[BWAPI::UpgradeTypes::Muscular_Augments] > 0) ||
-			(type_ == BWAPI::UnitTypes::Zerg_Overlord    && player.upgrades_map_[BWAPI::UpgradeTypes::Pneumatized_Carapace] > 0) ||
-			(type_ == BWAPI::UnitTypes::Zerg_Ultralisk   && player.upgrades_map_[BWAPI::UpgradeTypes::Anabolic_Synthesis] > 0) ||
-			(type_ == BWAPI::UnitTypes::Protoss_Scout    && player.upgrades_map_[BWAPI::UpgradeTypes::Gravitic_Thrusters] > 0) ||
-			(type_ == BWAPI::UnitTypes::Protoss_Zealot   && player.upgrades_map_[BWAPI::UpgradeTypes::Leg_Enhancements] > 0) ||
-			(type_ == BWAPI::UnitTypes::Terran_Vulture   && player.upgrades_map_[BWAPI::UpgradeTypes::Ion_Thrusters] > 0);
 		
-		speed_tech_ ? speed_ = type_.topSpeed() * 1.5 : speed_ = type_.topSpeed();
-	}
+		UnitData(const BWAPI::UnitType& u, const BWAPI::Player& p);
 
-	/// Generate a random position for the unit based on the unit speed
-	template <bool friendly>
-	void positionMCFAP(PlayerData<friendly>& player)
-	{
-		std::default_random_engine generator;  //Will be used to obtain a seed for the random number engine
-
-		std::uniform_int_distribution<int> dis(static_cast<int>(-speed_) * 4, static_cast<int>(speed_) * 4);
-
-		int rand_x = dis(generator);
-		int rand_y = dis(generator);
-
-		pos_ = BWAPI::Position(rand_x, rand_y);
-	}
-};
-
-
-namespace UnitUtil 
-{
-	/// FRIENDLY --- If we have the tech/buildings to build the requested unit
-	template <bool friendly, typename std::enable_if<friendly>::type* = nullptr>
-	bool isValidUnit(const BWAPI::UnitType& ut)
-	{
-		return BWAPI::Broodwar->canMake(ut);
-	}
-	/// ENEMY -- If unit is simmable
-	template <bool friendly, typename std::enable_if<!friendly>::type* = nullptr>
-	bool isValidUnit(const BWAPI::UnitType& ut)
-	{
-		if (ut.isWorker())
+		/// Convert a UnitData to a FAP::Unit. Must be in template for decltype(auto) conversion
+		auto convertToFAPUnit()
 		{
-			return false;
+			int groundDamage(player->damage(type.groundWeapon()));
+			int groundCooldown(type.groundWeapon().damageFactor() && type.maxGroundHits() ? player->weaponDamageCooldown(type) / (type.groundWeapon().damageFactor() * type.maxGroundHits()) : 0);
+			int groundMaxRange(player->weaponMaxRange(type.groundWeapon()));
+			int groundMinRange(type.groundWeapon().minRange());
+			BWAPI::DamageType groundDamageType(type.groundWeapon().damageType());
+
+			int airDamage(player->damage(type.airWeapon()));
+			int airCooldown(type.airWeapon().damageFactor() && type.maxAirHits() ? type.airWeapon().damageCooldown() / (type.airWeapon().damageFactor() * type.maxAirHits()) : 0);
+			int airMaxRange(player->weaponMaxRange(type.airWeapon()));
+			int airMinRange(type.airWeapon().minRange());
+			BWAPI::DamageType airDamageType(type.airWeapon().damageType());
+
+			int attackerCount(0);
+
+			if (type == BWAPI::UnitTypes::Protoss_Carrier)
+			{
+				groundDamage = player->damage(BWAPI::UnitTypes::Protoss_Interceptor.groundWeapon());
+				groundDamageType = BWAPI::UnitTypes::Protoss_Interceptor.groundWeapon().damageType();
+				groundCooldown = 5;
+				groundMaxRange = 32 * 8;
+
+				airDamage = groundDamage;
+				airDamageType = groundDamageType;
+				airCooldown = groundCooldown;
+				airMaxRange = groundMaxRange;
+
+				attackerCount = 5; //assume carrier has 5 interceptors
+			}
+			else if (type == BWAPI::UnitTypes::Protoss_Reaver)
+			{
+				groundDamage = player->damage(BWAPI::WeaponTypes::Scarab);
+				attackerCount = 5; //assume reaver has 5 scarabs (max is 5 without upgrade, 10 with)
+			}
+
+			return FAP::makeUnit<UnitData*>()
+				.setData(this)
+
+				.setUnitType(type)
+				.setUnitSize(type.size())
+
+				.setSpeed(static_cast<float>(player->topSpeed(type)))
+				.setPosition(positionMCFAP())
+
+				.setHealth(type.maxHitPoints())
+				.setMaxHealth(type.maxHitPoints())
+
+				.setArmor(player->armor(type))
+				.setShields(type.maxShields())
+				.setMaxShields(type.maxShields())
+				.setShieldUpgrades(type == BWAPI::UnitTypes::Protoss_Zealot ? player->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) : 0)
+
+				.setGroundDamage(groundDamage)
+				.setGroundCooldown(groundCooldown)
+				.setGroundMaxRange(groundMaxRange)
+				.setGroundMinRange(groundMinRange)
+				.setGroundDamageType(groundDamageType)
+
+				.setAirDamage(airDamage)
+				.setAirCooldown(airCooldown)
+				.setAirMaxRange(airMaxRange)
+				.setAirMinRange(airMinRange)
+				.setAirDamageType(airDamageType)
+
+				.setAttackerCount(attackerCount)
+				.setStimmed(type == BWAPI::UnitTypes::Terran_Marine ? player->hasResearched(BWAPI::TechTypes::Stim_Packs) : 0)
+
+				.setElevation(0)
+				.setFlying(type.isFlyer())
+				.setOrganic(type.isOrganic())
+
+				// These are already calculated above but have to be set to something else they throw FAP flags
+				.setArmorUpgrades(NULL)
+				.setAttackUpgrades(NULL)
+				.setShieldUpgrades(NULL)
+				.setSpeedUpgrade(NULL)
+				.setAttackSpeedUpgrade(NULL)
+				.setAttackCooldownRemaining(NULL)
+				.setRangeUpgrade(NULL)
+				;
 		}
 
-		if (ut == BWAPI::UnitTypes::Protoss_Interceptor)
+		/// Return a initial score for a unittype based on economic value
+		inline int initialUnitScore(const BWAPI::UnitType& ut) const
 		{
-			return false;
+			return static_cast<int>(ut.mineralPrice() + (1.25 * ut.gasPrice()) + (25 * (ut.supplyRequired() / 2)));
 		}
-		
-		return ut.airWeapon() != BWAPI::WeaponTypes::None || 
-			   ut.groundWeapon() != BWAPI::WeaponTypes::None ||
-			   ut == BWAPI::UnitTypes::Terran_Medic ||
-			   ut == BWAPI::UnitTypes::Protoss_Carrier ||
-			   ut == BWAPI::UnitTypes::Protoss_Reaver;
-	}
 
-	/// Return a initial score for a unittype based on economic value
-	inline int initialUnitScore(const BWAPI::UnitType& ut) 
-	{
-		return static_cast<int>( ut.mineralPrice() 
-							   + (1.25 * ut.gasPrice()) 
-			                   + (25 * (ut.supplyRequired() / 2)) );
-	}
-
-}
+	private:
+		/// Generate a random position for the unit based on the unit speed
+		BWAPI::Position positionMCFAP() const;
+	};
 
 }

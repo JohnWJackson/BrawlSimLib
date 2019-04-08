@@ -17,9 +17,6 @@
     <ClInclude Include="include\BrawlSim.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="include\BrawlSim\PlayerData.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="include\BrawlSim\UnitData.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -29,6 +26,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\BrawlSim.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\UnitData.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
