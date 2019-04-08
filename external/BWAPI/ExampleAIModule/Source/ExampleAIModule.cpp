@@ -62,24 +62,99 @@ void ExampleAIModule::onEnd(bool isWinner)
 void ExampleAIModule::onFrame()
 {
   // Called once every game frame
-	auto friendly_units = BWAPI::UnitTypes::allUnitTypes();
-	for (auto it = friendly_units.begin(); it != friendly_units.end(); )
+
+/* 
+**	------------------------------------BrawlSim Example Use---------------------------------------- 
+*/
+BWAPI::Race player_race = Broodwar->self()->getRace();
+
+
+/*  --------------------------------------- ZERG EXAMPLE ------------------------------------------- */
+if (player_race == Races::Zerg)
+{
+	// Unitset of all the currently visible enemy units
+	BWAPI::Unitset enemy_units = BWAPI::Broodwar->enemy()->getUnits();
+	// Set of all UnitTypes in the game
+	UnitType::set friendly_set = BWAPI::UnitTypes::allUnitTypes();
+
+	// Remove types that we don't have the buildings/tech/supply to build
+	for (auto it = friendly_set.begin(); it != friendly_set.end(); )
 	{
-		//if (BWAPI::Broodwar->self()->isUnitAvailable(*it) /*&& BWAPI::Broodwar->canMake(*it)*/)
-		//{
+		if (BWAPI::Broodwar->canMake(*it))
+		{
 			++it;
-		//}
-		//else
-		//{
-		//	it = friendly_units.erase(it);
-		//}
+		}
+		else
+		{
+			it = friendly_set.erase(it);
+		}
 	}
 
-	BWAPI::Unitset enemy_units = BWAPI::Broodwar->enemy()->getUnits();
-	BWAPI::UnitType ut = BrawlSim::returnOptimalUnit(friendly_units, enemy_units, 10);
+	// Get the most optimal unit for that building
+	BWAPI::UnitType optimal_res = BrawlSim::returnOptimalUnit(friendly_set, enemy_units, 10);
 
+	// Draw the optimal unit to screen for diagnostics
 	BrawlSim::drawOptimalUnit(200, 40);
-	//BWAPI::Broodwar->sendText(ut.c_str());
+
+	// Iterate through all the units that we own
+	for (auto &u : Broodwar->self()->getUnits())
+	{
+		// Check for larva
+		if (u->getType() == BWAPI::UnitTypes::Zerg_Larva)
+		{
+			// Morph the unit
+			u->train(optimal_res);
+		}
+	}
+}
+
+
+/*  ---------------------------------------- PROTOSS/TERRAN EXAMPLE ----------------------------------------- */
+if (player_race == Races::Protoss || player_race == Races::Terran)
+{
+	// Unitset of all the currently visible enemy units
+	BWAPI::Unitset enemy_units = BWAPI::Broodwar->enemy()->getUnits();
+
+	// Iterate through all the units that we own
+	for (auto &u : Broodwar->self()->getUnits())
+	{
+		if (u->getType().isBuilding())
+		{
+			// If building queue is empty
+			if (u->getTrainingQueue().size() < 1)
+			{
+				// Set of all the UnitTypes that this building can build
+				UnitType::set build_set = u->getType().buildsWhat();
+
+				// Remove types that we don't have the tech or supply to build
+				for (auto it = build_set.begin(); it != build_set.end(); )
+				{
+					if (BWAPI::Broodwar->canMake(*it))
+					{
+						++it;
+					}
+					else
+					{
+						it = build_set.erase(it);
+					}
+				}
+
+				// Get the most optimal unit for that building
+				BWAPI::UnitType optimal_res = BrawlSim::returnOptimalUnit(build_set, enemy_units, 10);
+
+				// Draw the optimal unit to screen 
+				BrawlSim::drawOptimalUnit(u);
+
+				// Build the unit
+				u->train(optimal_res);
+			}
+		}
+	}
+}
+
+/* ----------------------------------------END EXAMPLE--------------------------------------------- */
+
+
 
 
   // Display the game frame rate as text in the upper left area of the screen
@@ -164,7 +239,7 @@ void ExampleAIModule::onFrame()
         static int lastChecked = 0;
 
         // If we are supply blocked and haven't tried constructing more recently
-        if (  lastErr == Errors::Insufficient_Supply &&
+        if (Broodwar->self()->supplyTotal() - Broodwar->self()->supplyUsed() < 4 &&
               lastChecked + 400 < Broodwar->getFrameCount() &&
               Broodwar->self()->incompleteUnitCount(supplyProviderType) == 0 )
         {

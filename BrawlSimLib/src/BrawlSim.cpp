@@ -106,7 +106,7 @@ namespace BrawlSim
 		BWAPI::UnitType getBestScoredType(const std::map<BWAPI::UnitType, int>& scores)
 		{
 			int best_sim_score = INT_MIN;
-			BWAPI::UnitType build_type = BWAPI::UnitTypes::None;
+			BWAPI::UnitType res = BWAPI::UnitTypes::None;
 
 			for (const auto& u : scores)
 			{
@@ -114,25 +114,25 @@ namespace BrawlSim
 				if (u.second > best_sim_score)
 				{
 					best_sim_score = u.second;
-					build_type = u.first;
+					res = u.first;
 				}
 				// there are several cases where the test return ties, ex: cannot see enemy units and they appear "empty", extremely one-sided combat...
 				else if (u.second == best_sim_score)
 				{
 					// if the current unit is "flexible" with regard to air and ground units, then keep it and continue to consider the next unit.
-					if (build_type.airWeapon() != BWAPI::WeaponTypes::None && build_type.groundWeapon() != BWAPI::WeaponTypes::None)
+					if (res.airWeapon() != BWAPI::WeaponTypes::None && res.groundWeapon() != BWAPI::WeaponTypes::None)
 					{
 						continue;
 					}
 					// if the tying unit is "flexible", then let's use that one.
 					else if (u.first.airWeapon() != BWAPI::WeaponTypes::None && u.first.groundWeapon() != BWAPI::WeaponTypes::None)
 					{
-						build_type = u.first;
+						res = u.first;
 					}
 				}
 			}
 
-			return build_type;
+			return res;
 		}
 
 	}
@@ -140,11 +140,7 @@ namespace BrawlSim
 	/// Returns the unittype that is the "best" of a BuildFAP sim.
 	BWAPI::UnitType returnOptimalUnit(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, int sim_size)
 	{	
-		// Returns BWAPI::UnitType::None
-		if (friendly_types.empty())
-		{
-			return optimal_unit;
-		}
+		BWAPI::UnitType res = BWAPI::UnitTypes::None;
 
 		std::map<BWAPI::UnitType, int> scores;
 		std::vector<impl::UnitData> friendly_ud;
@@ -162,11 +158,18 @@ namespace BrawlSim
 			}
 		}
 
-		// Return best initial score
+		// Returns BWAPI::UnitType::None if no simmable friendly UnitData
+		if (friendly_ud.empty())
+		{
+			return res;
+		}
+
+		// Return best initial score if no enemy units
 		if (enemy_units.empty())
 		{
-			optimal_unit = getBestScoredType(scores);
-			return optimal_unit;
+			res = getBestScoredType(scores);
+			last_optimal = res;
+			return res;	
 		}
 
 		FAP::FastAPproximation<impl::UnitData*> MCfap;
@@ -178,15 +181,30 @@ namespace BrawlSim
 
 		updateScores(*MCfap.getState().first, scores);
 
-		optimal_unit = getBestScoredType(scores);
+		// Store the last optimal unit if we had one
+		res = getBestScoredType(scores);
+		last_optimal = res;
 
-		return optimal_unit;
+		return res;
 	}
 
-	/// Draw the optimal unit to the desired coordinates
+	/// Draw the OVERALL most optimal unit to the desired coordinates
 	void drawOptimalUnit(const int x, const int y)
 	{
-		BWAPI::Broodwar->drawTextScreen(x, y, "Brawl Unit: %s", optimal_unit.c_str());
+		BWAPI::Broodwar->drawTextScreen(x, y, "Brawl Unit: %s", last_optimal.c_str());
 	}
+
+	/// @TODO Fix this to display each optimal unit being built simultaneously
+	///// Draw the most optimal unit for a specific building UnitType
+	//void drawOptimalUnit(const BWAPI::Unit& building)
+	//{
+	//	if (building->getType().isBuilding() && building->isCompleted())
+	//	{
+	//		if (building->getType() == last_optimal.whatBuilds().first)
+	//		{
+	//			BWAPI::Broodwar->drawTextMap(building->getPosition(), last_optimal.c_str());
+	//		}
+	//	}
+	//}
 
 }
