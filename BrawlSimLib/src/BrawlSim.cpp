@@ -122,11 +122,11 @@ namespace BrawlSim
 		}
 
 		/// Converts valid friendly UnitTypes to FAP::Units and add to the sim
-		void addFriendlyToFAP(FAP::FastAPproximation<impl::UnitData*>& fap_object, const std::vector<BWAPI::UnitType>& units, const int sim_size)
+		void addFriendlyToFAP(FAP::FastAPproximation<impl::UnitData*>& fap_object, const BWAPI::UnitType::set& unit_types, const int sim_size)
 		{
 			BWAPI::Player self = BWAPI::Broodwar->self();
 
-			for (const auto& ut : units)
+			for (const auto& ut : unit_types)
 			{
 				if (ut.isTwoUnitsInOneEgg()) //zerglings and scourges
 				{
@@ -270,7 +270,7 @@ namespace BrawlSim
 	}
 
 	///Simply returns the unittype that is the "best" of a BuildFAP sim.
-	BWAPI::UnitType returnOptimalUnit(const std::vector<BWAPI::UnitType>& friendly_types, const BWAPI::Unitset& enemy_units, int sim_size)
+	BWAPI::UnitType returnOptimalUnit(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, int sim_size)
 	{	
 		FAP::FastAPproximation<impl::UnitData*> MCfap;
 
