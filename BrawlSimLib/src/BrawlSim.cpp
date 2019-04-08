@@ -193,6 +193,11 @@ namespace BrawlSim
 	{
 		BWAPI::Broodwar->drawTextScreen(x, y, "Brawl Unit: %s", last_optimal.c_str());
 	}
+	/// @Overload
+	void drawOptimalUnit(const BWAPI::Position& pos)
+	{
+		BWAPI::Broodwar->drawTextScreen(pos, "Brawl Unit: %s", last_optimal.c_str());
+	}
 
 	/// @TODO Fix this to display each optimal unit being built simultaneously
 	///// Draw the most optimal unit for a specific building UnitType

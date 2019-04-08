@@ -41,6 +41,8 @@ namespace BrawlSim
 	///		Y coordinate frame position
 	/// <param>
 	void drawOptimalUnit(const int x, const int y);
+	/// @overload - same function as above but with a Position
+	void drawOptimalUnit(const BWAPI::Position& pos);
 	
 	/// @TODO Fix this to display each optimal unit being built simultaneously
 	/*/// @Overload
@@ -50,7 +52,6 @@ namespace BrawlSim
 	///		The building to be drawn over
 	/// </param>
 	void drawOptimalUnit(const BWAPI::Unit& building);*/
-
 
 
 	/// The stored previous optimal unit. For drawOptimalUnit.
