@@ -62,7 +62,23 @@ void ExampleAIModule::onEnd(bool isWinner)
 void ExampleAIModule::onFrame()
 {
   // Called once every game frame
-	BWAPI::UnitType ut = BrawlSim::returnOptimalUnit();
+	auto friendly_units = BWAPI::UnitTypes::allUnitTypes();
+	for (auto it = friendly_units.begin(); it != friendly_units.end(); )
+	{
+		if (BWAPI::Broodwar->self()->isUnitAvailable(*it) && it->canAttack() && it->canMove() && !it->isHero())
+		{
+			++it;
+		}
+		else
+		{
+			it = friendly_units.erase(it);
+		}
+	}
+
+	BWAPI::Unitset enemy_units = BWAPI::Broodwar->enemy()->getUnits();
+	BWAPI::UnitType ut = BrawlSim::returnOptimalUnit(friendly_units, enemy_units, 10);
+	
+	BrawlSim::drawOptimalUnit(200, 40);
 	//BWAPI::Broodwar->sendText(ut.c_str());
 
 
