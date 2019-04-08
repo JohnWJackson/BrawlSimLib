@@ -6,27 +6,18 @@
 #include "BWAPI.h"
 #include "..\..\external\FAP\FAP\include\FAP.hpp"
 
-#include "BrawlSim\PlayerData.hpp"
 #include "BrawlSim\UnitData.hpp"
 
 
 namespace BrawlSim
 {
-	class UnitData;
-	class PlayerData;
-
-class Brawl
-{
-public:
-	/// Returns the BWAPI::UnitType that is the "best" of a
-	/// BuildFAP Monte Carlo simulation
-	BWAPI::UnitType returnOptimalUnit();
-
-private:
-	FAP::FastAPproximation<impl::UnitData*> MCfap;
-
-	impl::PlayerData<true>	player;
-	impl::PlayerData<false>	enemy;
-};
-
+	/* Returns the optimal UnitType of a FAP simulation using Monte Carlo sim positions
+	**
+	** @param   std::vector<BWAPI::UnitType> friendly_types - Desirable combat UnitTypes to sim for the "best" out of
+	** @param   BWAPI::Unitset enemy_units - Enemy units that the friendly UnitType will fight against
+	** @param   int sim_size - Approximate number of units for each force in the sim. If less than enemy units, makes an army composition for desired size. Default 10.
+	**														
+	** @return  BWAPI::UnitType - "best" UnitType of a FAP Sim
+	*/
+	BWAPI::UnitType returnOptimalUnit(const std::vector<BWAPI::UnitType>& friendly_types, const BWAPI::Unitset& enemy_units, int sim_size = 10);
 }
