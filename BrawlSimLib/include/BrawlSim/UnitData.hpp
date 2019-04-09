@@ -11,7 +11,7 @@ namespace impl
 		BWAPI::UnitType			type;
 		BWAPI::Player			player;
 
-		int				score;
+		int						score;
 
 		
 		UnitData(const BWAPI::UnitType& u, const BWAPI::Player& p);
