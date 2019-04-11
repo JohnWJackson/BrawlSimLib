@@ -1,12 +1,11 @@
 #include "..\..\BrawlSimLib\include\BrawlSim\UnitData.hpp"
 
-namespace impl {
-
+namespace impl
+{
 	UnitData::UnitData(const BWAPI::UnitType& u, const BWAPI::Player& p)
 		: type(u)
 		, player(p)
 	{
-		score = 1;
 	}
 
 	/// Generate a random position for the unit based on the unit speed
@@ -22,5 +21,4 @@ namespace impl {
 
 		return BWAPI::Position(rand_x, rand_y);
 	}
-
 }

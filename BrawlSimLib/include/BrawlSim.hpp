@@ -8,52 +8,66 @@
 
 #include "BrawlSim\UnitData.hpp"
 
-
 namespace BrawlSim
 {
-	/// <summary>Returns the optimal UnitType of a FAP simulation using Monte Carlo sim positions</summary>
+	/// <summary>FAP simulates each friendly UnitType against the composition of enemy Units/UnitTypes
+	///     using Monte Carlo sim positions</summary>
 	/// Checks to make sure units/unittypes are valid simulation units.
-	/// Doesn't check if the return UnitType is actually buildable.
-	/// 
+	/// Doesn't check if the UnitTypes are actually buildable.
+	///
 	/// <param name = "friendly_types">
-	///		BWAPI's custom set for unittypes. Desirable unique UnitTypes to sim for the "best" out of.
+	///		BWAPI's custom set for unittypes. Desirable UnitTypes to sim for the "best" out of.
 	/// </param>
 	/// <param name = "enemy_units">
 	///		BWAPI's custom set for units. Enemy units that the friendly UnitType will fight against.
 	/// </param>
-	/// <param name = "sim_size">
+	/// <param name = "army_size">
 	///		Approximate number of units for each force's army composition in the sim. Default 10.
 	/// </param>
-	///
-	/// <return>
-	///		"best" UnitType out of the FAP Sim. Returns BWAPI::UnitType::None if nothing buildable or empty friendly_types
-	/// </return>
-	BWAPI::UnitType returnOptimalUnit(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, int sim_size = 10);
-
-
-	/// <summary>Draw the 'would-be' optimal unit of the given friendly UnitTypes to the screen at the desired coordinates.
-	/// Best for Zerg or finding the best overall unit</summary>
-	///
-	/// <param name = "x">
-	///		X coordinate frame position
+	/// <param name = "sims">
+	///		Number of sims to perform for each UnitType. Default 1.
 	/// </param>
-	/// <param name = "y">
-	///		Y coordinate frame position
-	/// <param>
-	void drawOptimalUnit(const int x, const int y);
-	/// @overload - same function as above but with a Position
-	void drawOptimalUnit(const BWAPI::Position& pos);
-	
-	/// @TODO Fix this to display each optimal unit being built simultaneously
-	/*/// @Overload
-	/// <summary>Draw the 'would-be' optimal unit of a particular building on top of the building. Best for Terran/Protoss</summary>
-	///
-	/// <param name = "building">
-	///		The building to be drawn over
-	/// </param>
-	void drawOptimalUnit(const BWAPI::Unit& building);*/
+	void simulateEach(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, int army_size = 10, const int sims = 1);
 
+	/// @Overload - Same as above but with an enemy BWAPI::UnitType::set instead of BWAPI::Unitset
+	//void simulateEach(const BWAPI::UnitType::set& friendly_types, const BWAPI::UnitType::set& enemy_types, int army_size = 10, const int sims = 1);
 
-	/// The stored previous optimal unit. For drawOptimalUnit.
-	static BWAPI::UnitType last_optimal = BWAPI::UnitTypes::None;
+	//void simulateSets(const BWAPI::UnitType::set& friendly_types, const BWAPI::UnitType::set& enemy_types, int army_size = 10);
+	//void simulateSets(const BWAPI::UnitType::set& friendly_types, const BWAPI::UnitType::set& enemy_types, int army_size = 10);
+
+	/// <summary> Return the optimal BWAPI::UnitType after running a sim </summary>
+	BWAPI::UnitType getOptimalUnit();
+
+	/// <summary>Return a sorted vector of UnitType and score pairs in descending order with the most
+	///     optimal/highest scored UnitType at the top</summary>
+	std::vector<std::pair<BWAPI::UnitType, int>> getUnitRanks();
+
+	namespace Diag
+	{
+		/// <summary>Draw the 'would-be' optimal unit of the given friendly UnitTypes to the screen at the desired coordinates.
+		///     Best for Zerg or finding the best overall unit</summary>
+		///
+		/// <param name = "x">
+		///		X coordinate frame position
+		/// </param>
+		/// <param name = "y">
+		///		Y coordinate frame position
+		/// <param>
+		void drawOptimalUnit(const int x, const int y);
+		/// @overload - same function as above but with a Position
+		void drawOptimalUnit(const BWAPI::Position& pos);
+
+		void drawUnitRank(const int x, const int y);
+
+		/// @TODO Fix this to display each optimal unit being built simultaneously
+		/*/// @Overload
+		/// <summary>Draw the 'would-be' optimal unit of a particular building on top of the building. Best for Terran/Protoss</summary>
+		///
+		/// <param name = "building">
+		///		The building to be drawn over
+		/// </param>
+		void drawOptimalUnit(const BWAPI::Unit& building);*/
+	}
+
+	static BWAPI::UnitType optimal_unit = BWAPI::UnitTypes::None;
 }

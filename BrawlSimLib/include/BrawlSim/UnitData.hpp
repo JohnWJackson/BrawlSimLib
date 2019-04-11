@@ -4,19 +4,15 @@
 
 namespace impl
 {
-
 	class UnitData
 	{
 	public:
 		BWAPI::UnitType			type;
 		BWAPI::Player			player;
 
-		int				score;
-
-		
 		UnitData(const BWAPI::UnitType& u, const BWAPI::Player& p);
 
-		/// Convert a UnitData to a FAP::Unit. Must be in template for decltype(auto) conversion
+		/// Convert a UnitData to a FAP::Unit.
 		auto convertToFAPUnit()
 		{
 			int groundDamage(player->damage(type.groundWeapon()));
@@ -32,9 +28,11 @@ namespace impl
 			BWAPI::DamageType airDamageType(type.airWeapon().damageType());
 
 			int attackerCount(0);
+			bool stimmed(false);
 
-			if (type == BWAPI::UnitTypes::Protoss_Carrier)
+			switch (type)
 			{
+			case BWAPI::UnitTypes::Protoss_Carrier:
 				groundDamage = player->damage(BWAPI::UnitTypes::Protoss_Interceptor.groundWeapon());
 				groundDamageType = BWAPI::UnitTypes::Protoss_Interceptor.groundWeapon().damageType();
 				groundCooldown = 5;
@@ -45,12 +43,24 @@ namespace impl
 				airCooldown = groundCooldown;
 				airMaxRange = groundMaxRange;
 
-				attackerCount = 5; //assume carrier has 5 interceptors
-			}
-			else if (type == BWAPI::UnitTypes::Protoss_Reaver)
-			{
+				attackerCount = 4 + 4 * player->getUpgradeLevel(BWAPI::UpgradeTypes::Carrier_Capacity); //assume carrier has 4 interceptors unless upgraded
+				break;
+
+			case BWAPI::UnitTypes::Protoss_Reaver:
 				groundDamage = player->damage(BWAPI::WeaponTypes::Scarab);
-				attackerCount = 5; //assume reaver has 5 scarabs (max is 5 without upgrade, 10 with)
+				groundDamageType = BWAPI::UnitTypes::Protoss_Scarab.groundWeapon().damageType();
+
+				attackerCount = 5 + 5 * player->getUpgradeLevel(BWAPI::UpgradeTypes::Reaver_Capacity); //assume reaver has 5 scarabs unless upgraded
+				break;
+
+			case BWAPI::UnitTypes::Terran_Marine:
+				stimmed = player->hasResearched(BWAPI::TechTypes::Stim_Packs);
+				if (stimmed)
+				{
+					groundCooldown /= 2;
+					airCooldown /= 2;
+				}
+				break;
 			}
 
 			return FAP::makeUnit<UnitData*>()
@@ -61,14 +71,15 @@ namespace impl
 
 				.setSpeed(static_cast<float>(player->topSpeed(type)))
 				.setPosition(positionMCFAP())
+				.setElevation() // default elevation -1
 
 				.setHealth(type.maxHitPoints())
 				.setMaxHealth(type.maxHitPoints())
 
-				.setArmor(player->armor(type))
 				.setShields(type.maxShields())
+				.setShieldUpgrades(player->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Plasma_Shields))
 				.setMaxShields(type.maxShields())
-				.setShieldUpgrades(type == BWAPI::UnitTypes::Protoss_Zealot ? player->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Plasma_Shields) : 0)
+				.setArmor(player->armor(type))
 
 				.setGroundDamage(groundDamage)
 				.setGroundCooldown(groundCooldown)
@@ -83,17 +94,15 @@ namespace impl
 				.setAirDamageType(airDamageType)
 
 				.setAttackerCount(attackerCount)
-				.setStimmed(type == BWAPI::UnitTypes::Terran_Marine ? player->hasResearched(BWAPI::TechTypes::Stim_Packs) : 0)
+				.setStimmed(stimmed)
 
-				.setElevation(0)
 				.setFlying(type.isFlyer())
 				.setOrganic(type.isOrganic())
 
-				// These are already calculated above but have to be set to something else they throw FAP flags
+				// Already calculated above but have to .set for FAP Flags. Might disable the FAP Flags later
+				.setSpeedUpgrade(NULL)
 				.setArmorUpgrades(NULL)
 				.setAttackUpgrades(NULL)
-				.setShieldUpgrades(NULL)
-				.setSpeedUpgrade(NULL)
 				.setAttackSpeedUpgrade(NULL)
 				.setAttackCooldownRemaining(NULL)
 				.setRangeUpgrade(NULL)
@@ -104,5 +113,4 @@ namespace impl
 		/// Generate a random position for the unit based on the unit speed
 		BWAPI::Position positionMCFAP() const;
 	};
-
 }
