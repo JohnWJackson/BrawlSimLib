@@ -22,3 +22,4 @@ external/BWAPI/.vs/ExampleProjects/v15/.suo
 *.manifest
 *.opendb
 external/BWAPI/Debug/ExampleAIModule.dll
+external/BWAPI/Release/ExampleAIModule.dll
