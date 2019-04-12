@@ -86,15 +86,16 @@ void ExampleAIModule::onFrame()
 				it = friendly_set.erase(it);
 			}
 		}
-
+		BrawlSim::Brawl b;
 		// Get the most optimal unit for that building
-		BrawlSim::simulateEach(friendly_set, enemy_units);
-		BWAPI::UnitType optimal = BrawlSim::getOptimalUnit();
+		b.simulateEach(friendly_set, enemy_units);
+		BWAPI::UnitType optimal = b.getOptimalUnit();
+
 		//BWAPI::Broodwar->sendText(optimal.c_str());
 
 		// Draw the optimal unit to screen for diagnostics
-		BrawlSim::Diag::drawOptimalUnit(200, 40);
-		BrawlSim::Diag::drawUnitRank(200, 60);
+		b.drawOptimalUnit(200, 40);
+		b.drawUnitRank(200, 60);
 
 		// Iterate through all the units that we own
 		for (auto &u : Broodwar->self()->getUnits())
