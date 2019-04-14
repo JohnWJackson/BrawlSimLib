@@ -1,5 +1,4 @@
 #include "..\..\BrawlSimLib\include\BrawlSim.hpp"
-#include <set>
 
 namespace BrawlSim
 {
@@ -23,136 +22,93 @@ namespace BrawlSim
 			type == BWAPI::UnitTypes::Terran_Medic;
 	}
 
-	/// Add valid friendly units to the FAP sim and score them. Return map of the UnitType and score
-	void Brawl::addFriendlyToFAP(const BWAPI::UnitType::set& friendly_types, const int army_size)
-	{
-		for (const auto& ut : friendly_types)
-		{
-			if (isValidType(ut))
-			{
-				if (ut.isTwoUnitsInOneEgg()) //zerglings and scourges
-				{
-					for (int i = 0; i < army_size * 2; ++i) // add double the units
-					{
-						friendly_data.push_back(UnitData(ut, BWAPI::Broodwar->self())); // Store the UnitData
-						MCfap.addUnitPlayer1(friendly_data.back().convertToFAPUnit()); // put the last UnitData into the sim
-						//fap_object.addUnitPlayer1(ud->convertToFAPUnit());
-					}
-				}
-				else
-				{
-					for (int i = 0; i < army_size; ++i)
-					{
-						friendly_data.push_back(UnitData(ut, BWAPI::Broodwar->self())); // Store the UnitData
-						MCfap.addUnitPlayer1(friendly_data.back().convertToFAPUnit()); // put the last UnitData into the sim
-						//fap_object.addUnitPlayer1(ud->convertToFAPUnit());
-					}
-				}
-			}
-		}
-	}
-
 	/// Scale enemy unit composition to the sim_size and add valid UnitTypes to the sim
-	void Brawl::addEnemyToFAP(const BWAPI::Unitset& units, int& army_size)
+	void Brawl::setScaledEnemy(const BWAPI::Unitset& units, int& army_size)
 	{
-		BWAPI::Player enemy = BWAPI::Broodwar->enemy();
-
 		int unit_total = 0;
-		std::map<BWAPI::UnitType, int> count;
-
 		for (const auto& u : units) //count unittypes
 		{
 			if (isValidType(u->getType()))
 			{
-				++count[u->getType()];
+				//enemy_data.push_back(UnitData(u->getType(), BWAPI::Broodwar->enemy())); // Store the UnitData
+
+				enemy_data[UnitData(u->getType(), BWAPI::Broodwar->enemy())]++;
 				++unit_total;
 			}
 		}
 
-		if (unit_total == army_size) // already scaled
+		if (unit_total != army_size) //scale the army composition before adding
 		{
-			for (const auto& ut : count)
-			{
-				for (int i = 0; i < ut.second; ++i)
-				{
-					enemy_data.push_back(UnitData(ut.first, BWAPI::Broodwar->enemy())); // Store the UnitData
-					MCfap.addUnitPlayer2(enemy_data.back().convertToFAPUnit()); // put the last UnitData into the sim
-					//UnitData* ud = new UnitData(ut.first, enemy);
-					//fap_object.addUnitPlayer2(ud->convertToFAPUnit());
-				}
-			}
-		}
-		else  //scale the army composition before adding
-		{
-			int actual_sim_size = 0; //Original sim_size not guaranteed
-			for (const auto& ut : count)
+			int actual_army_size = 0; //Original sim_size not guaranteed
+			for (const auto& ut : enemy_data)
 			{
 				double percent = ut.second / (double)unit_total;
 				int scaled_count = std::lround(percent * army_size);
-				actual_sim_size += scaled_count;
+				actual_army_size += scaled_count;
 
-				for (int i = 0; i < scaled_count; ++i)
-				{
-					enemy_data.push_back(UnitData(ut.first, BWAPI::Broodwar->enemy())); // Store the UnitData
-					MCfap.addUnitPlayer2(enemy_data.back().convertToFAPUnit()); // put the last UnitData into the sim
-					//UnitData* ud = new UnitData(ut.first, enemy);
-					//fap_object.addUnitPlayer2(ud->convertToFAPUnit());
-				}
+				enemy_data[ut.first] = scaled_count;
 			}
-			army_size = actual_sim_size; //set the sim size to match the enemy's size
+			army_size = actual_army_size; //set the sim size to match the enemy's size
+		}
+	}
+
+	/// Add valid friendly units to the FAP sim and score them. Return map of the UnitType and score
+	void Brawl::addFriendlyTypeToFAP(const BWAPI::UnitType& type, const int army_size)
+	{
+		if (type.isTwoUnitsInOneEgg()) //zerglings and scourges
+		{
+			for (int i = 0; i < army_size * 2; ++i) // add double the units
+			{
+				MCfap.addUnitPlayer1(std::move(friendly_data.back().convertToFAPUnit())); // put the last UnitData into the sim
+			}
+		}
+		else
+		{
+			for (int i = 0; i < army_size; ++i)
+			{
+				MCfap.addUnitPlayer1(std::move(friendly_data.back().convertToFAPUnit())); // put the last UnitData into the sim
+			}
+		}
+	}
+
+	void Brawl::addEnemyToFAP()
+	{
+		for (auto& u : enemy_data)
+		{
+			for (int i = 0; i < u.second; ++i)
+			{
+				MCfap.addUnitPlayer2(u.first.convertToFAPUnit()); // put the last UnitData into the sim
+			}
 		}
 	}
 
 	/// Updates the UnitData's score to post FAP sim values
-	void Brawl::updateFAPScores()
+	void Brawl::setPostRank(const int army_size)
 	{
-		std::map<BWAPI::UnitType, int> count;
-		std::map<BWAPI::UnitType, int> post_scores;
-
-		// Accumulate total score for each unittype and increment the count;
+		int i = 0;
+		int score = 0;
+		//BWAPI::Broodwar->sendText(std::to_string(MCfap.getState().first->size()).c_str());
+		BWAPI::Broodwar->sendText(std::to_string(army_size).c_str());
+		// Accumulate total score for the unittype and increment the count;
 		for (auto& fu : *MCfap.getState().first)
 		{
 			double proportion_health = (fu.health + fu.shields) / (double)(fu.maxHealth + fu.maxShields);
-			BWAPI::Broodwar->sendText(std::to_string(proportion_health).c_str());
 
-			fu.data->post_score = static_cast<int>((count[fu.unitType] * fu.data->post_score + (proportion_health * fu.data->pre_score)) / ++count[fu.unitType]);
-			//post_scores[fu.unitType] += static_cast<int>(proportion_health * fu.data->score);
+			score = static_cast<int>((i * score + (proportion_health * fu.data->pre_score)) / (i + 1));
+			++i;
 		}
+		for (i; i < army_size; ++i) //size discrepancy, these units died in sim
+		{
+			score = static_cast<int>((i * score) / (i + 1));
+		}
+
+		unit_ranks.push_back(std::make_pair(friendly_data.back().type, score));
 	}
 
-	/// Set the scored unit_ranks vector and sort the vector in descending order
-	void Brawl::setUnitRanks()
+	/// Sort in descending order
+	void Brawl::sortRanks()
 	{
-		// Only add one of each type to the rank
-		BWAPI::UnitType last_type;
-
-		// If we haven't run a fap sim: we have no post_score so use pre_scores
-		if (MCfap.getState().first->front().data->post_score == -1)
-		{
-			for (auto& fu : *MCfap.getState().first)
-			{
-				if (fu.unitType != last_type)
-				{
-					unit_ranks.push_back(std::make_pair(fu.unitType, fu.data->pre_score));
-					last_type = fu.unitType;
-				}
-			}
-		}
-		// We have run a fap sim: use post_scores
-		else
-		{
-			for (auto& fu : *MCfap.getState().first)
-			{
-				if (fu.unitType != last_type)
-				{
-					unit_ranks.push_back(std::make_pair(fu.unitType, fu.data->post_score));
-					last_type = fu.unitType;
-				}
-			}
-		}
-
-		// Sort in descending order
-		sort(unit_ranks.begin(), unit_ranks.end(), [](std::pair<BWAPI::UnitType, int>& lhs, std::pair<BWAPI::UnitType, int>& rhs)
+		sort(unit_ranks.begin(), unit_ranks.end(), [&](std::pair<BWAPI::UnitType, int>& lhs, std::pair<BWAPI::UnitType, int>& rhs)
 		{
 			return lhs.second > rhs.second;
 		});
@@ -164,7 +120,7 @@ namespace BrawlSim
 		int best_sim_score = INT_MIN;
 		BWAPI::UnitType res = BWAPI::UnitTypes::None;
 
-		// Fap_vector is sorted so just check scores that are equal to the first unit's score
+		// ranks are sorted so just check scores that are equal to the first unit's score
 		for (const auto& u : unit_ranks)
 		{
 			// there are several cases where the test return ties, ex: cannot see enemy units and they appear "empty", extremely one-sided combat...
@@ -198,34 +154,50 @@ namespace BrawlSim
 	/// Simulate each friendly UnitType against the composition of enemy units
 	void Brawl::simulateEach(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, int army_size, const int sims)
 	{
-		// Returns BWAPI::UnitType::None if no simmable friendly UnitData
+		unit_ranks.reserve(friendly_types.size());
+		friendly_data.reserve(friendly_types.size());
+
+		//Optimal is BWAPI::UnitType::None if no simmable friendly UnitData
 		if (friendly_types.empty())
 		{
-			optimal_unit = BWAPI::UnitTypes::None; // No best unit
 			return;
 		}
-		// Return best initial (economic) score if there are no enemy units to sim against
+		//Return best initial (economic) score if there are no enemy units to sim against
 		else if (enemy_units.empty())
 		{
-			addFriendlyToFAP(friendly_types, army_size); // Add Friendly units to FAP and get initial unit scores
-
-			setUnitRanks(); // Rank economic scores
-			setOptimalUnit(); // Get best economic unittype, run after setting/sorting unit ranks
+			for (auto& type : friendly_types)
+			{
+				if (isValidType(type))
+				{
+					friendly_data.push_back(UnitData(type, BWAPI::Broodwar->self()));
+					unit_ranks.push_back(std::make_pair(type, friendly_data.back().pre_score)); // Set the initial ecnomic rank of last UnitData
+				}
+			}
+			sortRanks();
+			setOptimalUnit();
 			return;
 		}
-		// Normal sim
 		else
 		{
-			addEnemyToFAP(enemy_units, army_size); // Add Enemy first - changes the sim_size
+			setScaledEnemy(enemy_units, army_size); //Add enemy first - changes the sim_size
+			for (auto& type : friendly_types) //simming each type against the enemy
+			{
+				if (isValidType(type))
+				{
+					addEnemyToFAP();
 
-			addFriendlyToFAP(friendly_types, army_size); // Add Friendly units to FAP and get initial unit scores
+					friendly_data.push_back(UnitData(type, BWAPI::Broodwar->self()));
+					addFriendlyTypeToFAP(type, army_size);
 
-			MCfap.simulate(); //default 96 frames
+					MCfap.simulate(); //default 96 frames
 
-			updateFAPScores();
+					setPostRank(army_size); // Set the types post FAP-sim score
 
-			setUnitRanks(); // Rank the post sim scores
-			setOptimalUnit(); // Run after setting/sorting unit ranks
+					MCfap.clear();
+				}
+			}
+			sortRanks();
+			setOptimalUnit();
 		}
 	}
 

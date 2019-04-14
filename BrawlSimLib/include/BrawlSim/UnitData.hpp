@@ -9,12 +9,11 @@ public:
 	BWAPI::Player			player;
 
 	int						pre_score;
-	int						post_score;
 
 	UnitData(const BWAPI::UnitType& u, const BWAPI::Player& p);
 
 	/// Convert a UnitData to a FAP::Unit. Must be in header for decl(auto)
-	auto convertToFAPUnit()
+	auto convertToFAPUnit() const
 	{
 		int groundDamage(player->damage(type.groundWeapon()));
 		int groundCooldown(type.groundWeapon().damageFactor() && type.maxGroundHits() ? player->weaponDamageCooldown(type) / (type.groundWeapon().damageFactor() * type.maxGroundHits()) : 0);
@@ -65,7 +64,7 @@ public:
 		}
 
 		return FAP::makeUnit<UnitData*>()
-			.setData(this)
+			.setData(const_cast<UnitData*>(this))
 
 			.setUnitType(type)
 			.setUnitSize(type.size())
@@ -108,6 +107,11 @@ public:
 			.setAttackCooldownRemaining(NULL)
 			.setRangeUpgrade(NULL)
 			;
+	}
+
+	inline bool operator< (const UnitData& other) const
+	{
+		return this->type.getID() < other.type.getID();
 	}
 
 private:

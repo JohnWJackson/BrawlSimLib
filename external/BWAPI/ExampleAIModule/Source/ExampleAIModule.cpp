@@ -1,5 +1,7 @@
 #include "ExampleAIModule.h"
 #include <iostream>
+#include <ctime>
+#include <chrono>
 
 using namespace BWAPI;
 using namespace Filter;
@@ -86,9 +88,16 @@ void ExampleAIModule::onFrame()
 				it = friendly_set.erase(it);
 			}
 		}
+		auto start = std::chrono::high_resolution_clock().now();
+
 		BrawlSim::Brawl b;
 		// Get the most optimal unit for that building
 		b.simulateEach(friendly_set, enemy_units);
+
+		auto end = std::chrono::high_resolution_clock().now();
+
+		//BWAPI::Broodwar->sendText(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()).c_str());
+
 		BWAPI::UnitType optimal = b.getOptimalUnit();
 
 		//BWAPI::Broodwar->sendText(optimal.c_str());

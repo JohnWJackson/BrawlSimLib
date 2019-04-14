@@ -4,7 +4,6 @@ UnitData::UnitData(const BWAPI::UnitType& u, const BWAPI::Player& p)
 	: type(u)
 	, player(p)
 	, pre_score(initialScore())
-	, post_score(-1)
 {
 }
 
