@@ -30,8 +30,6 @@ namespace BrawlSim
 		{
 			if (isValidType(u->getType()))
 			{
-				//enemy_data.push_back(UnitData(u->getType(), BWAPI::Broodwar->enemy())); // Store the UnitData
-
 				enemy_data[UnitData(u->getType(), BWAPI::Broodwar->enemy())]++;
 				++unit_total;
 			}
@@ -53,7 +51,7 @@ namespace BrawlSim
 	}
 
 	/// Add valid friendly units to the FAP sim and score them. Return map of the UnitType and score
-	void Brawl::addFriendlyTypeToFAP(const BWAPI::UnitType& type, const int army_size)
+	void Brawl::addFriendlyType(const BWAPI::UnitType& type, const int army_size)
 	{
 		if (type.isTwoUnitsInOneEgg()) //zerglings and scourges
 		{
@@ -71,14 +69,29 @@ namespace BrawlSim
 		}
 	}
 
-	void Brawl::addEnemyToFAP()
+	/// Add enemies to fap and return true if friendly type can attack the enemy
+	bool Brawl::addValidEnemyTypes(const BWAPI::UnitType& type)
 	{
+		int attack_count = 0;
 		for (auto& u : enemy_data)
 		{
+			if ((type.maxAirHits() && u.first.type.isFlyer()) || (type.maxGroundHits() && !u.first.type.isFlyer()))
+			{
+				attack_count++;
+			}
 			for (int i = 0; i < u.second; ++i)
 			{
-				MCfap.addUnitPlayer2(u.first.convertToFAPUnit()); // put the last UnitData into the sim
+				MCfap.addUnitPlayer2(u.first.convertToFAPUnit());
 			}
+		}
+		if (attack_count == 0) //the friendly type can't attack any of the enemy units in the sim
+		{
+			unit_ranks.push_back(std::make_pair(type, 0));
+			return false; //unsimmable
+		}
+		else
+		{
+			return true;
 		}
 	}
 
@@ -87,8 +100,6 @@ namespace BrawlSim
 	{
 		int i = 0;
 		int score = 0;
-		//BWAPI::Broodwar->sendText(std::to_string(MCfap.getState().first->size()).c_str());
-		BWAPI::Broodwar->sendText(std::to_string(army_size).c_str());
 		// Accumulate total score for the unittype and increment the count;
 		for (auto& fu : *MCfap.getState().first)
 		{
@@ -179,22 +190,19 @@ namespace BrawlSim
 		}
 		else
 		{
-			setScaledEnemy(enemy_units, army_size); //Add enemy first - changes the sim_size
+			setScaledEnemy(enemy_units, army_size); //Scale the enemy army - changes the sim_size
 			for (auto& type : friendly_types) //simming each type against the enemy
 			{
-				if (isValidType(type))
+				if (isValidType(type) && addValidEnemyTypes(type))
 				{
-					addEnemyToFAP();
-
 					friendly_data.push_back(UnitData(type, BWAPI::Broodwar->self()));
-					addFriendlyTypeToFAP(type, army_size);
+					addFriendlyType(type, army_size);
 
-					MCfap.simulate(); //default 96 frames
+					MCfap.simulate();
 
 					setPostRank(army_size); // Set the types post FAP-sim score
-
-					MCfap.clear();
 				}
+				MCfap.clear();
 			}
 			sortRanks();
 			setOptimalUnit();

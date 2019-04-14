@@ -17,6 +17,9 @@ namespace BrawlSim
 	class Brawl
 	{
 	public:
+		void setData(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, int army_size = 10, const int sims = 1);
+		void setData(const BWAPI::UnitType::set& friendly_types, const BWAPI::UnitType::set& enemy_units, int army_size = 10, const int sims = 1);
+
 		/// <summary>FAP simulates each friendly UnitType against the composition of enemy Units/UnitTypes
 		///     using Monte Carlo sim positions</summary>
 		/// Checks to make sure units/unittypes are valid simulation units.
@@ -77,10 +80,8 @@ namespace BrawlSim
 	private:
 		FAP::FastAPproximation<UnitData*>				MCfap;
 
-		std::vector <UnitData>							friendly_data;
+		std::vector<UnitData>							friendly_data;
 		std::map<UnitData, int>							enemy_data;
-
-		std::map<BWAPI::UnitType, int>					post_scores;
 
 		BWAPI::UnitType									optimal_unit = BWAPI::UnitTypes::None;
 		std::vector<std::pair<BWAPI::UnitType, int>>	unit_ranks;
@@ -89,13 +90,13 @@ namespace BrawlSim
 
 		void setScaledEnemy(const BWAPI::Unitset& units, int& army_size);
 
-		void addEnemyToFAP();
+		bool addValidEnemyTypesToFAP(const BWAPI::UnitType& type);
 		void addFriendlyTypeToFAP(const BWAPI::UnitType& type, const int army_size);
-
-		void setOptimalUnit();
 
 		void setPostRank(const int army_size);
 		void sortRanks();
+
+		void setOptimalUnit();
 	};
 
 	//namespace Diag
