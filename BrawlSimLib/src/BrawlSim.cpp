@@ -72,13 +72,14 @@ namespace BrawlSim
 	{
 		friendly_data.push_back(UnitData(type, BWAPI::Broodwar->self()));
 
+		army_size = 0;
 		int friendly_score = 0;
 		if (type.isTwoUnitsInOneEgg()) //zerglings and scourges
 		{
-			while (friendly_score < enemy_score * 2) // add double the units
+			while (friendly_score < enemy_score) // add double the units
 			{
 				MCfap.addUnitPlayer1(std::move(friendly_data.back().convertToFAPUnit()));
-				friendly_score += friendly_data.back().pre_score;
+				friendly_score += friendly_data.back().pre_score / 2;
 				++army_size;
 			}
 		}
@@ -208,63 +209,14 @@ namespace BrawlSim
 						MCfap.simulate();
 
 						setPostRank(army_size); // Set the types post FAP-sim score
-						MCfap.clear();
 					}
+					MCfap.clear();
 				}
 			}
 			sortRanks();
 			setOptimalUnit();
 		}
 	}
-
-	///// Returns the unittype that is the "best" of a BuildFAP sim.
-	//void simulate(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, int army_size, const int sims)
-	//{
-	//	std::map<BWAPI::UnitType, int> scores;
-	//	std::vector<UnitData> friendly_ud;
-
-	//	// Convert each UnitType to UnitData and get initial score
-	//	for (const auto& ut : friendly_types)
-	//	{
-	//		if (isValidType(ut))
-	//		{
-	//			UnitData ud{ ut, BWAPI::Broodwar->self() };
-
-	//			friendly_ud.push_back(ud);
-
-	//			scores[ut] = ud.score;
-	//		}
-	//	}
-
-	//	// Returns BWAPI::UnitType::None if no simmable friendly UnitData
-	//	if (friendly_ud.empty())
-	//	{
-	//		return res;
-	//	}
-
-	//	// Return best initial score if no enemy units
-	//	if (enemy_units.empty())
-	//	{
-	//		res = getBestScoredType(scores);
-	//		last_optimal = res;
-	//		return res;
-	//	}
-
-	//	FAP::FastAPproximation<UnitData*> MCfap;
-
-	//	addEnemyToFAP(MCfap, enemy_units, sim_size); // Add Enemy first - changes the sim_size
-	//	addFriendlyToFAP(MCfap, friendly_ud, sim_size);
-
-	//	MCfap.simulate(); //default 96 frames
-
-	//	updateScores(*MCfap.getState().first, scores);
-
-	//	// Store the last optimal unit if we had one
-	//	res = getBestScoredType(scores);
-	//	last_optimal = res;
-
-	//	return res;
-	//}
 
 	/// Return top scored friendly unittype of the sim
 	BWAPI::UnitType Brawl::getOptimalUnit()

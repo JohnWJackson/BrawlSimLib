@@ -113,6 +113,10 @@ public:
 	{
 		return this->type.getID() < other.type.getID();
 	}
+	inline bool operator== (const UnitData& other) const
+	{
+		return this->type == other.type;
+	}
 
 private:
 	/// Return a map of valid simmable UnitTypes and a starting economic-based score
