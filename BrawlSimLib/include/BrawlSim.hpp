@@ -28,17 +28,19 @@ namespace BrawlSim
 		/// <param name = "enemy_units">
 		///		BWAPI's custom set for units. Enemy units that the friendly UnitType will fight against.
 		/// </param>
+		/// <param name = "scoring_type">
+		///		The scoring system used to rank units in the system. 0 = http://basil.bytekeeper.org/stats.htmleconomic survival rates, 1 = economic scores, 2 = Normalized to 1. Default is 0.
+		/// </param>
 		/// <param name = "army_size">
-		///		Approximate number of units for each force's army composition in the sim. Default 10.
+		///		Approximate number of units for each force's army composition in the sim. Default -1 for no scaling.
 		/// </param>
 		/// <param name = "sims">
 		///		Number of sims to perform for each UnitType. Default 1.
 		/// </param>
-		void simulateEach(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, int army_size = 10, const int sims = 1);
+		void simulateEach(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, const int scoring_type = 0, int army_size = -1, const int sims = 1);
 
 		/// @Overload - Same as above but with an enemy BWAPI::UnitType::set instead of BWAPI::Unitset
 		//void simulateEach(const BWAPI::UnitType::set& friendly_types, const BWAPI::UnitType::set& enemy_types, int army_size = 10, const int sims = 1);
-
 		//void simulateSets(const BWAPI::UnitType::set& friendly_types, const BWAPI::UnitType::set& enemy_types, int army_size = 10);
 		//void simulateSets(const BWAPI::UnitType::set& friendly_types, const BWAPI::UnitType::set& enemy_types, int army_size = 10);
 
@@ -47,7 +49,7 @@ namespace BrawlSim
 
 		/// <summary>Return a sorted vector of UnitType and score pairs in descending order with the most
 		///     optimal/highest scored UnitType at the top</summary>
-		std::vector<std::pair<BWAPI::UnitType, int>> getUnitRanks();
+		std::vector<std::pair<BWAPI::UnitType, double>> getUnitRanks();
 
 		/// <summary>Draw the 'would-be' optimal unit of the given friendly UnitTypes to the screen at the desired coordinates.
 		///     Best for Zerg or finding the best overall unit</summary>
@@ -84,14 +86,14 @@ namespace BrawlSim
 		bool											valid_enemies = true;
 
 		BWAPI::UnitType									optimal_unit = BWAPI::UnitTypes::None;
-		std::vector<std::pair<BWAPI::UnitType, int>>	unit_ranks;
+		std::vector<std::pair<BWAPI::UnitType, double>>	unit_ranks;
 
 		bool isValidType(const BWAPI::UnitType& type);
 
 		void addEnemyTypes(const BWAPI::Unitset& units, const BWAPI::UnitType& friendly_type, int army_size);
 		void addFriendlyType(const BWAPI::UnitType& type, int& army_size);
 
-		void setPostRank(const int army_size);
+		void setPostRank(const int scoring_type, const int army_size);
 		void sortRanks();
 
 		void setOptimalUnit();

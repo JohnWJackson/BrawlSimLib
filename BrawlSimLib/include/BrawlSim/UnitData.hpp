@@ -8,7 +8,8 @@ public:
 	BWAPI::UnitType			type;
 	BWAPI::Player			player;
 
-	int						pre_score;
+	int						eco_score;
+	double					survival_rate;
 
 	UnitData(const BWAPI::UnitType& u, const BWAPI::Player& p);
 
@@ -120,8 +121,11 @@ public:
 
 private:
 	/// Return a map of valid simmable UnitTypes and a starting economic-based score
-	int initialScore() const;
+	int initialEcoScore() const;
 
 	/// Generate a random position for the unit based on the unit speed
 	BWAPI::Position positionMCFAP() const;
+
+	/// Get the hardcoded survival rate of a unit. Taken from http://basil.bytekeeper.org/stats.html (5/2/19).
+	double survivalScore() const;
 };

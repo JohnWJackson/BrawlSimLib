@@ -10,6 +10,7 @@ namespace BrawlSim
 		if (type.isWorker() ||
 			type.isHero() ||
 			type.supplyRequired() == 0 ||
+			type == BWAPI::UnitTypes::Terran_Nuclear_Missile ||
 			type == BWAPI::UnitTypes::Protoss_Interceptor ||
 			type == BWAPI::UnitTypes::Protoss_Scarab ||
 			type == BWAPI::UnitTypes::Zerg_Infested_Terran)
@@ -32,18 +33,21 @@ namespace BrawlSim
 			{
 				if (isValidType(u->getType()))
 				{
-					enemy_data[UnitData(u->getType(), BWAPI::Broodwar->enemy())]++;
+					UnitData temp = UnitData(u->getType(), BWAPI::Broodwar->enemy());
+					enemy_data[temp]++;
+					enemy_score += temp.eco_score;
 					++unit_total;
 				}
 			}
-
-			for (const auto& ut : enemy_data)
+			if (army_size != -1) // if army_size == -1 no scaling
 			{
-				double percent = ut.second / (double)unit_total;
-				int scaled_count = std::lround(percent * army_size);
+				for (const auto& ut : enemy_data)
+				{
+					double percent = ut.second / (double)unit_total;
+					int scaled_count = std::lround(percent * army_size);
 
-				enemy_score += ut.first.pre_score * scaled_count;
-				enemy_data[ut.first] = scaled_count;
+					enemy_data[ut.first] = scaled_count;
+				}
 			}
 		}
 
@@ -79,7 +83,7 @@ namespace BrawlSim
 			while (friendly_score < enemy_score) // add double the units
 			{
 				MCfap.addUnitPlayer1(std::move(friendly_data.back().convertToFAPUnit()));
-				friendly_score += friendly_data.back().pre_score / 2;
+				friendly_score += friendly_data.back().eco_score / 2;
 				++army_size;
 			}
 		}
@@ -88,44 +92,57 @@ namespace BrawlSim
 			while (friendly_score < enemy_score)
 			{
 				MCfap.addUnitPlayer1(std::move(friendly_data.back().convertToFAPUnit()));
-				friendly_score += friendly_data.back().pre_score;
+				friendly_score += friendly_data.back().eco_score;
 				++army_size;
 			}
 		}
 
-		if (friendly_score < enemy_score - (friendly_data.back().pre_score / 4)) // Add one more unit to friendly sim if scores aren't very even
+		if (friendly_score < enemy_score - (friendly_data.back().eco_score / 4)) // Add one more unit to friendly sim if scores aren't very even
 		{
 			MCfap.addUnitPlayer1(std::move(friendly_data.back().convertToFAPUnit()));
-			friendly_score += friendly_data.back().pre_score;
+			friendly_score += friendly_data.back().eco_score;
 			++army_size;
 		}
 	}
 
 	/// Updates the UnitData's score to post FAP sim values
-	void Brawl::setPostRank(const int army_size)
+	void Brawl::setPostRank(const int scoring_type, const int army_size)
 	{
+		double initial_score = 0;
+		switch (scoring_type)
+		{
+		case 0:
+			initial_score = friendly_data.back().survival_rate;
+			break;
+		case 1:
+			initial_score = friendly_data.back().eco_score;
+			break;
+		case 2:
+			initial_score = 1;
+			break;
+		}
+
+		double res_score = 0;
 		int i = 0;
-		int score = 0;
 		// Accumulate total score for the unittype and increment the count;
 		for (auto& fu : *MCfap.getState().first)
 		{
 			double proportion_health = (fu.health + fu.shields) / (double)(fu.maxHealth + fu.maxShields);
 
-			score = static_cast<int>((i * score + (proportion_health * fu.data->pre_score)) / (i + 1));
+			res_score = (i * res_score + (proportion_health * initial_score)) / (double)(i + 1);
 			++i;
 		}
 		for (i; i < army_size; ++i) //size discrepancy, these units died in sim
 		{
-			score = static_cast<int>((i * score) / (i + 1));
+			res_score = (i * res_score) / (double)(i + 1);
 		}
-
-		unit_ranks.push_back(std::make_pair(friendly_data.back().type, score));
+		unit_ranks.push_back(std::make_pair(friendly_data.back().type, res_score));
 	}
 
 	/// Sort in descending order
 	void Brawl::sortRanks()
 	{
-		sort(unit_ranks.begin(), unit_ranks.end(), [&](std::pair<BWAPI::UnitType, int>& lhs, std::pair<BWAPI::UnitType, int>& rhs)
+		sort(unit_ranks.begin(), unit_ranks.end(), [&](std::pair<BWAPI::UnitType, double>& lhs, std::pair<BWAPI::UnitType, double>& rhs)
 		{
 			return lhs.second > rhs.second;
 		});
@@ -134,7 +151,7 @@ namespace BrawlSim
 	/// Set the optimal unit to the friendly UnitType with the highest score. If scores are tied, chooses more "flexible" UnitType.
 	void Brawl::setOptimalUnit()
 	{
-		int best_sim_score = INT_MIN;
+		double best_sim_score = INT_MIN;
 		BWAPI::UnitType res = BWAPI::UnitTypes::None;
 
 		// ranks are sorted so just check scores that are equal to the first unit's score
@@ -169,7 +186,7 @@ namespace BrawlSim
 	}
 
 	/// Simulate each friendly UnitType against the composition of enemy units
-	void Brawl::simulateEach(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, int army_size, const int sims)
+	void Brawl::simulateEach(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, const int scoring_type, int army_size, const int sims)
 	{
 		unit_ranks.reserve(friendly_types.size());
 		friendly_data.reserve(friendly_types.size());
@@ -179,20 +196,31 @@ namespace BrawlSim
 		{
 			return;
 		}
-		//Return best initial (economic) score if there are no enemy units to sim against
+		//Return best initial score if there are no enemy units to sim against
 		else if (enemy_units.empty())
 		{
 			for (auto& type : friendly_types)
 			{
-				if (isValidType(type))
+				if (isValidType(type) && type.maxGroundHits()) //Dont consider units that can only shoot air initially
 				{
 					friendly_data.push_back(UnitData(type, BWAPI::Broodwar->self()));
-					unit_ranks.push_back(std::make_pair(type, friendly_data.back().pre_score)); // Set the initial ecnomic rank of last UnitData
+
+					switch (scoring_type)
+					{
+					case 0:
+						unit_ranks.push_back(std::make_pair(type, friendly_data.back().survival_rate));
+						break;
+					case 1:
+						unit_ranks.push_back(std::make_pair(type, friendly_data.back().eco_score));
+						break;
+					case 2:
+						unit_ranks.push_back(std::make_pair(type, 1));
+						break;
+					}
 				}
+				sortRanks();
+				setOptimalUnit();
 			}
-			sortRanks();
-			setOptimalUnit();
-			return;
 		}
 		else
 		{
@@ -208,7 +236,7 @@ namespace BrawlSim
 
 						MCfap.simulate();
 
-						setPostRank(army_size); // Set the types post FAP-sim score
+						setPostRank(scoring_type, army_size); // Set the types post FAP-sim score
 					}
 					MCfap.clear();
 				}
@@ -225,7 +253,7 @@ namespace BrawlSim
 	}
 
 	/// Return BWAPI::UnitType and score of each unit in sim
-	std::vector<std::pair<BWAPI::UnitType, int>> Brawl::getUnitRanks()
+	std::vector<std::pair<BWAPI::UnitType, double>> Brawl::getUnitRanks()
 	{
 		return unit_ranks;
 	}

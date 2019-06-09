@@ -71,52 +71,52 @@ void ExampleAIModule::onFrame()
 	BWAPI::Unitset enemy_units = BWAPI::Broodwar->enemy()->getUnits();
 
 	/*  --------------------------------------- ZERG EXAMPLE ------------------------------------------- */
-	if (player_race == Races::Zerg)
-	{
+	//if (player_race == Races::Zerg)
+	//{
 		// Set of all UnitTypes in the game
-		UnitType::set friendly_set = BWAPI::UnitTypes::allUnitTypes();
+	UnitType::set friendly_set = BWAPI::UnitTypes::allUnitTypes();
 
-		//Remove types that we don't have the buildings/tech/supply to build
-		for (auto it = friendly_set.begin(); it != friendly_set.end(); )
+	//Remove types that we don't have the buildings/tech/supply to build
+	for (auto it = friendly_set.begin(); it != friendly_set.end(); )
+	{
+		if (it->getRace() == player_race)
 		{
-			if (it->getRace() == player_race)
-			{
-				++it;
-			}
-			else
-			{
-				it = friendly_set.erase(it);
-			}
+			++it;
 		}
-		auto start = std::chrono::high_resolution_clock().now();
-
-		BrawlSim::Brawl b;
-		// Get the most optimal unit for that building
-		b.simulateEach(friendly_set, enemy_units);
-
-		auto end = std::chrono::high_resolution_clock().now();
-
-		//BWAPI::Broodwar->sendText(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()).c_str());
-
-		BWAPI::UnitType optimal = b.getOptimalUnit();
-
-		//BWAPI::Broodwar->sendText(optimal.c_str());
-
-		// Draw the optimal unit to screen for diagnostics
-		b.drawOptimalUnit(200, 40);
-		b.drawUnitRank(200, 60);
-
-		// Iterate through all the units that we own
-		for (auto &u : Broodwar->self()->getUnits())
+		else
 		{
-			// Check for larva
-			if (u->getType() == BWAPI::UnitTypes::Zerg_Larva)
-			{
-				// Morph the unit
-				//u->train(optimal_res);
-			}
+			it = friendly_set.erase(it);
 		}
 	}
+
+	//timers
+	auto start = std::chrono::high_resolution_clock().now();
+	BrawlSim::Brawl b;
+	// Get the most optimal unit for that building
+	b.simulateEach(friendly_set, enemy_units);
+	auto end = std::chrono::high_resolution_clock().now();
+
+	//BWAPI::Broodwar->sendText(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()).c_str());
+
+	BWAPI::UnitType optimal = b.getOptimalUnit();
+
+	//BWAPI::Broodwar->sendText(optimal.c_str());
+
+	// Draw the optimal unit to screen for diagnostics
+	b.drawOptimalUnit(200, 40);
+	b.drawUnitRank(200, 60);
+
+	// Iterate through all the units that we own
+	for (auto &u : Broodwar->self()->getUnits())
+	{
+		// Check for larva
+		if (u->getType() == BWAPI::UnitTypes::Zerg_Larva)
+		{
+			// Morph the unit
+			//u->train(optimal_res);
+		}
+	}
+	//}
 
 	///*  ---------------------------------------- PROTOSS/TERRAN EXAMPLE ----------------------------------------- */
 	//if (player_race == Races::Protoss || player_race == Races::Terran)
