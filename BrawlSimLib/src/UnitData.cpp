@@ -140,6 +140,7 @@ double UnitData::survivalScore() const
 			return (10447 - 3793) / 10447.0;
 		}
 	}
+	return NULL;
 }
 
 /// Generate a random position for the unit based on the unit speed

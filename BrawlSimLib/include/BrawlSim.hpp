@@ -6,7 +6,7 @@
 #include <set>
 
 #include "BWAPI.h"
-#include "..\..\external\FAP\FAP\include\FAP.hpp"
+#include "FAP.hpp"
 
 #include "BrawlSim\UnitData.hpp"
 
@@ -39,33 +39,28 @@ namespace BrawlSim
 		/// </param>
 		void simulateEach(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, const int scoring_type = 0, int army_size = -1, const int sims = 1);
 
-		/// @Overload - Same as above but with an enemy BWAPI::UnitType::set instead of BWAPI::Unitset
-		//void simulateEach(const BWAPI::UnitType::set& friendly_types, const BWAPI::UnitType::set& enemy_types, int army_size = 10, const int sims = 1);
-		//void simulateSets(const BWAPI::UnitType::set& friendly_types, const BWAPI::UnitType::set& enemy_types, int army_size = 10);
-		//void simulateSets(const BWAPI::UnitType::set& friendly_types, const BWAPI::UnitType::set& enemy_types, int army_size = 10);
+		void simulateForces(const BWAPI::Unitset& friendly_units, const BWAPI::Unitset& enemy_units, const int sims = 1);
 
 		/// <summary> Return the optimal BWAPI::UnitType after running a sim </summary>
-		BWAPI::UnitType getOptimalUnit();
+		BWAPI::UnitType getOptimalUnit() const;
 
-		/// <summary>Return a sorted vector of UnitType and score pairs in descending order with the most
-		///     optimal/highest scored UnitType at the top</summary>
-		std::vector<std::pair<BWAPI::UnitType, double>> getUnitRanks();
+		/// <summary> Return a sorted vector of UnitType and score pairs in descending order with the most
+		///     optimal/highest scored UnitType at the top </summary>
+		std::vector<std::pair<BWAPI::UnitType, double>> getUnitRanks() const;
 
-		/// <summary>Draw the 'would-be' optimal unit of the given friendly UnitTypes to the screen at the desired coordinates.
-		///     Best for Zerg or finding the best overall unit</summary>
-		///
-		/// <param name = "x">
-		///		X coordinate frame position
-		/// </param>
-		/// <param name = "y">
-		///		Y coordinate frame position
-		/// <param>
-		void drawOptimalUnit(const int x, const int y);
+		/// <summary> Return a std::pair of the BWAPI::Player and int score of the force with the highest score remaining after a simulation (I.e. the winning player).
+		///		Returns std::pair of BWAPI::Broodwar->self() and NULL if scores are even </summary>
+		std::pair<BWAPI::Player, int> getBestForce() const;
 
-		/// @overload - same function as above but with a Position
-		void drawOptimalUnit(const BWAPI::Position& pos);
+		/// <summary>Draw the 'would-be' optimal unit of the given friendly UnitTypes to the screen after a simulateEach() simulation
+		void drawOptimalUnit(const int x, const int y) const;
+		void drawOptimalUnit(const BWAPI::Position& pos) const;
 
-		void drawUnitRank(const int x, const int y);
+		/// <summary> Draw the unit ranks to the game screen after a simulateEach() simulation</summary>
+		void drawUnitRank(const int x, const int y) const;
+
+		/// <summary> Draw the winning force and score to the screen after a simulateForces() simulation</summary>
+		void drawBestForce(const int x, const int y) const;
 
 		/// @TODO Fix this to display each optimal unit being built simultaneously
 		/*/// @Overload
@@ -82,20 +77,32 @@ namespace BrawlSim
 		std::vector<UnitData>							friendly_data;
 		std::map<UnitData, int>							enemy_data;
 
+		int												friendly_score = 0;
 		int												enemy_score = 0;
 		bool											valid_enemies = true;
 
 		BWAPI::UnitType									optimal_unit = BWAPI::UnitTypes::None;
 		std::vector<std::pair<BWAPI::UnitType, double>>	unit_ranks;
 
+		/// TO DO - Condense these into enum bitset flags for static_asserts
+		static bool										simEachFlag;
+		static bool										simForcesFlag;
+
 		bool isValidType(const BWAPI::UnitType& type);
 
 		void addEnemyTypes(const BWAPI::Unitset& units, const BWAPI::UnitType& friendly_type, int army_size);
 		void addFriendlyType(const BWAPI::UnitType& type, int& army_size);
 
+		/// TO DO - Condense these into one function with enum flags
+		void checkAliveUnits(std::vector<std::pair<FAP::FAPUnit<UnitData*>, int>>& friendly_pre_units, std::vector<std::pair<FAP::FAPUnit<UnitData*>, int>>& enemy_pre_units);
+		void checkAliveFriendly(std::vector<std::pair<FAP::FAPUnit<UnitData*>, int>>& friendly_pre_units);
+		void checkAliveEnemy(std::vector<std::pair<FAP::FAPUnit<UnitData*>, int>>& enemy_pre_units);
+
 		void setPostRank(const int scoring_type, const int army_size);
 		void sortRanks();
 
 		void setOptimalUnit();
+
+		void resetFlags();
 	};
 }

@@ -77,13 +77,15 @@ namespace BrawlSim
 		friendly_data.push_back(UnitData(type, BWAPI::Broodwar->self()));
 
 		army_size = 0;
-		int friendly_score = 0;
 		if (type.isTwoUnitsInOneEgg()) //zerglings and scourges
 		{
 			while (friendly_score < enemy_score) // add double the units
 			{
-				MCfap.addUnitPlayer1(std::move(friendly_data.back().convertToFAPUnit()));
-				friendly_score += friendly_data.back().eco_score / 2;
+				for (int i = 0; i < 2; i++)
+				{
+					MCfap.addUnitPlayer1(std::move(friendly_data.back().convertToFAPUnit()));
+				}
+				friendly_score += friendly_data.back().eco_score;
 				++army_size;
 			}
 		}
@@ -102,6 +104,62 @@ namespace BrawlSim
 			MCfap.addUnitPlayer1(std::move(friendly_data.back().convertToFAPUnit()));
 			friendly_score += friendly_data.back().eco_score;
 			++army_size;
+		}
+	}
+
+	void Brawl::checkAliveUnits(std::vector<std::pair<FAP::FAPUnit<UnitData*>, int>>& friendly_pre_units, std::vector<std::pair<FAP::FAPUnit<UnitData*>, int>>& enemy_pre_units)
+	{
+		checkAliveFriendly(friendly_pre_units);
+		checkAliveEnemy(enemy_pre_units);
+	}
+
+	void Brawl::checkAliveFriendly(std::vector<std::pair<FAP::FAPUnit<UnitData*>, int>>& friendly_pre_units)
+	{
+		size_t i = 0, j = 0;
+		while (i < MCfap.getState().first->size())
+		{
+			// Unit died
+			if (MCfap.getState().first->at(i).data != friendly_pre_units.at(j).first.data)
+			{
+				friendly_score -= friendly_pre_units.at(j).first.data->eco_score;
+				friendly_pre_units.at(j).second = 0;
+				++j;
+			}
+			// Unit alive
+			else
+			{
+				++i;
+				++j;
+			}
+		}
+		for (j; j < friendly_pre_units.size(); ++j)
+		{
+			friendly_score -= friendly_pre_units.at(j).first.data->eco_score;
+		}
+	}
+
+	void Brawl::checkAliveEnemy(std::vector<std::pair<FAP::FAPUnit<UnitData*>, int>>& enemy_pre_units)
+	{
+		size_t i = 0, j = 0;
+		while (i < MCfap.getState().second->size())
+		{
+			// Unit died
+			if (MCfap.getState().second->at(i).data != enemy_pre_units.at(j).first.data)
+			{
+				enemy_score -= enemy_pre_units.at(j).first.data->eco_score;
+				enemy_pre_units.at(j).second = 0;
+				++j;
+			}
+			// Unit alive
+			else
+			{
+				++i;
+				++j;
+			}
+		}
+		for (j; j < enemy_pre_units.size(); ++j)
+		{
+			enemy_score -= enemy_pre_units.at(j).first.data->eco_score;
 		}
 	}
 
@@ -188,6 +246,7 @@ namespace BrawlSim
 	/// Simulate each friendly UnitType against the composition of enemy units
 	void Brawl::simulateEach(const BWAPI::UnitType::set& friendly_types, const BWAPI::Unitset& enemy_units, const int scoring_type, int army_size, const int sims)
 	{
+		resetFlags();
 		unit_ranks.reserve(friendly_types.size());
 		friendly_data.reserve(friendly_types.size());
 
@@ -244,40 +303,204 @@ namespace BrawlSim
 			sortRanks();
 			setOptimalUnit();
 		}
+		simEachFlag = true;
+	}
+
+	/// Simulate an entire friendly force against an entire enemy force
+	void Brawl::simulateForces(const BWAPI::Unitset& friendly_units, const BWAPI::Unitset& enemy_units, const int sims)
+	{
+		resetFlags();
+		unit_ranks.reserve(friendly_units.size());
+		friendly_data.reserve(enemy_units.size());
+
+		// Invalid Simulation - one of the sides doesn't have any units to simulate against
+		if (friendly_units.empty() || enemy_units.empty())
+		{
+			return;
+		}
+		// Valid Simulation
+		else
+		{
+			// Setup friendly units
+			for (auto& unit : friendly_units)
+			{
+				if (isValidType(unit->getType()))
+				{
+					friendly_data.push_back(UnitData(unit->getType(), BWAPI::Broodwar->self()));
+					friendly_score += friendly_data.back().eco_score;
+
+					if (unit->getType().isTwoUnitsInOneEgg())
+					{
+						for (int i = 0; i < 2; i++)
+						{
+							MCfap.addUnitPlayer1(std::move(friendly_data.back().convertToFAPUnit()));
+						}
+					}
+					else
+					{
+						MCfap.addUnitPlayer1(std::move(friendly_data.back().convertToFAPUnit()));
+					}
+				}
+			}
+			// Take a copy of friendly pre simulation units
+			std::vector<std::pair<FAP::FAPUnit<UnitData*>, int>> friendly_pre_units;
+			for (auto& u : *MCfap.getState().first)
+			{
+				auto temp = std::make_pair(u, 1);
+				friendly_pre_units.push_back(temp);
+			}
+
+			// Setup enemy units
+			for (auto& unit : enemy_units)
+			{
+				if (isValidType(unit->getType()))
+				{
+					UnitData temp = UnitData(unit->getType(), BWAPI::Broodwar->enemy());
+					enemy_data[temp]++;
+					enemy_score += temp.eco_score;
+
+					if (unit->getType().isTwoUnitsInOneEgg())
+					{
+						for (int i = 0; i < 2; i++)
+						{
+							MCfap.addUnitPlayer2(std::move(temp.convertToFAPUnit()));
+						}
+					}
+					else
+					{
+						MCfap.addUnitPlayer2(std::move(temp.convertToFAPUnit()));
+					}
+				}
+			}
+			// Take a copy of enemy pre simulation units
+			std::vector<std::pair<FAP::FAPUnit<UnitData*>, int>> enemy_pre_units;
+			for (auto& u : *MCfap.getState().second)
+			{
+				auto temp = std::make_pair(u, 1);
+				enemy_pre_units.push_back(temp);
+			}
+
+			MCfap.simulate();
+
+			checkAliveUnits(friendly_pre_units, enemy_pre_units);
+
+			MCfap.clear();
+		}
+		simForcesFlag = true;
 	}
 
 	/// Return top scored friendly unittype of the sim
-	BWAPI::UnitType Brawl::getOptimalUnit()
+	BWAPI::UnitType Brawl::getOptimalUnit() const
 	{
-		return optimal_unit;
+		if (simEachFlag)
+		{
+			return optimal_unit;
+		}
+		else
+		{
+			BWAPI::Broodwar->sendText("Invalid use of getOptimalUnit()");
+		}
 	}
 
 	/// Return BWAPI::UnitType and score of each unit in sim
-	std::vector<std::pair<BWAPI::UnitType, double>> Brawl::getUnitRanks()
+	std::vector<std::pair<BWAPI::UnitType, double>> Brawl::getUnitRanks() const
 	{
-		return unit_ranks;
+		if (simEachFlag)
+		{
+			return unit_ranks;
+		}
+		else
+		{
+			BWAPI::Broodwar->sendText("Invalid use of getUnitRanks()");
+		}
+	}
+
+	/// Return the force with the highest score
+	std::pair<BWAPI::Player, int> Brawl::getBestForce() const
+	{
+		if (simForcesFlag)
+		{
+			if (friendly_score > enemy_score)
+			{
+				return std::make_pair(BWAPI::Broodwar->self(), friendly_score);
+			}
+			else if (friendly_score < enemy_score)
+			{
+				return std::make_pair(BWAPI::Broodwar->enemy(), enemy_score);
+			}
+			else
+			{
+				return std::make_pair(BWAPI::Broodwar->self(), NULL);
+			}
+		}
+		else
+		{
+			BWAPI::Broodwar->sendText("Invalid use of getBestForces()");
+			return std::make_pair(BWAPI::Broodwar->self(), NULL);
+		}
+	}
+
+	/// Draw the winning force and score in a unit vs unit simulation
+	void Brawl::drawBestForce(const int x, const int y) const
+	{
+		if (simForcesFlag)
+		{
+			BWAPI::Broodwar->drawTextScreen(x, y, "Force: %s", getBestForce().first);
+			BWAPI::Broodwar->drawTextScreen(x + 100, y, "Score: %s", getBestForce().second);
+		}
+		else
+		{
+			BWAPI::Broodwar->sendText("Invalid use of drawBestForce()");
+		}
 	}
 
 	/// Draw the OVERALL most optimal unit to the desired coordinates
-	void Brawl::drawOptimalUnit(const int x, const int y)
+	void Brawl::drawOptimalUnit(const int x, const int y) const
 	{
-		BWAPI::Broodwar->drawTextScreen(x, y, "Brawl Unit: %s", getOptimalUnit().c_str());
+		if (simEachFlag)
+		{
+			BWAPI::Broodwar->drawTextScreen(x, y, "Brawl Unit: %s", getOptimalUnit().c_str());
+		}
+		else
+		{
+			BWAPI::Broodwar->sendText("Invalid use of drawOptimalUnit()");
+		}
 	}
-	/// @Overload
-	void Brawl::drawOptimalUnit(const BWAPI::Position& pos)
+	void Brawl::drawOptimalUnit(const BWAPI::Position& pos) const
 	{
-		BWAPI::Broodwar->drawTextScreen(pos, "Brawl Unit: %s", getOptimalUnit().c_str());
+		if (simEachFlag)
+		{
+			BWAPI::Broodwar->drawTextScreen(pos, "Brawl Unit: %s", getOptimalUnit().c_str());
+		}
+		else
+		{
+			BWAPI::Broodwar->sendText("Invalid use of drawOptimalUnit()");
+		}
 	}
 
-	void Brawl::drawUnitRank(const int x, const int y)
+	/// Draw the ranked unit list to the screen
+	void Brawl::drawUnitRank(const int x, const int y) const
 	{
-		int spacing = 0;
-		for (const auto& u : getUnitRanks())
+		if (simEachFlag)
 		{
-			BWAPI::Broodwar->drawTextScreen(x, y + spacing, u.first.c_str());
-			BWAPI::Broodwar->drawTextScreen(x + 200, y + spacing, std::to_string(u.second).c_str());
-			spacing += 12;
+			int spacing = 0;
+			for (const auto& u : getUnitRanks())
+			{
+				BWAPI::Broodwar->drawTextScreen(x, y + spacing, u.first.c_str());
+				BWAPI::Broodwar->drawTextScreen(x + 200, y + spacing, std::to_string(u.second).c_str());
+				spacing += 12;
+			}
 		}
+		else
+		{
+			BWAPI::Broodwar->sendText("Invalid use of drawUnitRank()");
+		}
+	}
+
+	void Brawl::resetFlags()
+	{
+		simEachFlag = false;
+		simForcesFlag = false;
 	}
 
 	/// @TODO Fix this to display each optimal unit being built simultaneously

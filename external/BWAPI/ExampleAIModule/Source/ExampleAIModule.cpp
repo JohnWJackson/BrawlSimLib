@@ -69,14 +69,9 @@ void ExampleAIModule::onFrame()
 	BWAPI::Race player_race = Broodwar->self()->getRace();
 	// Unitset of all the currently visible enemy units
 	BWAPI::Unitset enemy_units = BWAPI::Broodwar->enemy()->getUnits();
+	BWAPI::Unitset friendly_units = BWAPI::Broodwar->self()->getUnits();
 
-	/*  --------------------------------------- ZERG EXAMPLE ------------------------------------------- */
-	//if (player_race == Races::Zerg)
-	//{
-		// Set of all UnitTypes in the game
 	UnitType::set friendly_set = BWAPI::UnitTypes::allUnitTypes();
-
-	//Remove types that we don't have the buildings/tech/supply to build
 	for (auto it = friendly_set.begin(); it != friendly_set.end(); )
 	{
 		if (it->getRace() == player_race)
@@ -93,18 +88,13 @@ void ExampleAIModule::onFrame()
 	auto start = std::chrono::high_resolution_clock().now();
 	BrawlSim::Brawl b;
 	// Get the most optimal unit for that building
-	b.simulateEach(friendly_set, enemy_units);
+	b.simulateForces(friendly_units, enemy_units);
 	auto end = std::chrono::high_resolution_clock().now();
 
-	//BWAPI::Broodwar->sendText(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()).c_str());
-
-	BWAPI::UnitType optimal = b.getOptimalUnit();
-
-	//BWAPI::Broodwar->sendText(optimal.c_str());
-
 	// Draw the optimal unit to screen for diagnostics
-	b.drawOptimalUnit(200, 40);
-	b.drawUnitRank(200, 60);
+	//b.drawOptimalUnit(200, 40);
+	//b.drawUnitRank(200, 60);
+	b.drawBestForce(200, 40);
 
 	// Iterate through all the units that we own
 	for (auto &u : Broodwar->self()->getUnits())

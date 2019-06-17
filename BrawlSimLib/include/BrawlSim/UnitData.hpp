@@ -64,41 +64,42 @@ public:
 			break;
 		}
 
+		/// TODO - Find a way around fap flags so i can manually set upgrades
 		return FAP::makeUnit<UnitData*>()
 			.setData(const_cast<UnitData*>(this))
 
 			.setUnitType(type)
-			.setUnitSize(type.size())
+			//.setUnitSize(type.size())
 
-			.setSpeed(static_cast<float>(player->topSpeed(type)))
+			//.setSpeed(static_cast<float>(player->topSpeed(type)))
 			.setPosition(positionMCFAP())
 			.setElevation() // default elevation -1
 
 			.setHealth(type.maxHitPoints())
-			.setMaxHealth(type.maxHitPoints())
+			//.setMaxHealth(type.maxHitPoints())
 
 			.setShields(type.maxShields())
 			.setShieldUpgrades(player->getUpgradeLevel(BWAPI::UpgradeTypes::Protoss_Plasma_Shields))
-			.setMaxShields(type.maxShields())
-			.setArmor(player->armor(type))
+			//.setMaxShields(type.maxShields())
+			//.setArmor(player->armor(type))
 
-			.setGroundDamage(groundDamage)
-			.setGroundCooldown(groundCooldown)
-			.setGroundMaxRange(groundMaxRange)
-			.setGroundMinRange(groundMinRange)
-			.setGroundDamageType(groundDamageType)
+			//.setGroundDamage(groundDamage)
+			//.setGroundCooldown(groundCooldown)
+			//.setGroundMaxRange(groundMaxRange)
+			//.setGroundMinRange(groundMinRange)
+			//.setGroundDamageType(groundDamageType)
 
-			.setAirDamage(airDamage)
-			.setAirCooldown(airCooldown)
-			.setAirMaxRange(airMaxRange)
-			.setAirMinRange(airMinRange)
-			.setAirDamageType(airDamageType)
+			//.setAirDamage(airDamage)
+			//.setAirCooldown(airCooldown)
+			//.setAirMaxRange(airMaxRange)
+			//.setAirMinRange(airMinRange)
+			//.setAirDamageType(airDamageType)
 
 			.setAttackerCount(attackerCount)
 			.setStimmed(stimmed)
 
 			.setFlying(type.isFlyer())
-			.setOrganic(type.isOrganic())
+			//.setOrganic(type.isOrganic())
 
 			// Already calculated above but have to .set for FAP Flags. Might disable the FAP Flags later
 			.setSpeedUpgrade(NULL)
